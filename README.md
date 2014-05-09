@@ -47,6 +47,8 @@ Configuration
 
 ### User Configuration
 
+**As a rule of thumb, avoid as much as possible using anonymous functions since it prevents you from caching your configuration.**
+
 The top-level configuration key for user configuration of this module is `zf-statsd`.
 
 The `config/module.config.php` file contains a self-explanative example of configuration.
@@ -68,6 +70,7 @@ Example:
                     '<http-content-type>'  => array(
                         'counter'          => true,
                         'ram_gauge'        => true,
+                        'sample_rate'      => 1,
                         'timer'            => true,
                     ),
                 ),
@@ -114,9 +117,46 @@ A wildcard stands for all the non-specified content types.
 
 #### Key: `override_case_callback`
 
-#### Key: `override_dots`
+Callback used to override the case of the metric names.
 
-#### Key: `override_special_chars_with`
+Example:
+
+```php
+'zf-statsd' => array(
+    /* ... */
+    'override_case_callback' => 'strtolower',
+    /* ... */
+),    
+```
+
+#### Key: `replace_dots`
+
+Whether to override a `.` found in a string used in the metric name.
+If true, `.` will be replaced with `replace_special_chars_with`.
+
+Example:
+
+```php
+'zf-statsd' => array(
+    /* ... */
+    'replace_dots' => true,
+    /* ... */
+),    
+```
+
+#### Key: `replace_special_chars_with`
+
+Char used to replace all special chars encountererd within a string used in the metric name.
+
+Example:
+
+```php
+'zf-statsd' => array(
+    /* ... */
+    'replace_special_chars_with' => '-',
+    /* ... */
+),    
+```
 
 #### Key: `statsd`
 
@@ -142,6 +182,4 @@ ZF2 Events
 
 #### `ZF\Statsd\StatsdListener`
 
-This listener is attached to the `MvcEvent::EVENT_FINISH` event with priority `-10000`.
-
-<hostname>.<route-name>.<http-method>.<http-code>.<http-content-type>
+This listener is attached to the `MvcEvent::EVENT_FINISH` event with the very low priority of `-10000`.

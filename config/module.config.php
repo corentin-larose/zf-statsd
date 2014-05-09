@@ -28,10 +28,13 @@ return array(
         'timer_suffix'   => '',
 
         // Chars and case overriding
-        'override_case_callback'      => 'strtolower', // strtoupper, strtolower, ucwords, etc.
-        'override_dots'               => true,
-        'override_special_chars_with' => '-',
+        'override_case_callback'     => 'strtolower', // strtoupper, strtolower, ucwords, etc.
+        'replace_dots'               => true,
+        'replace_special_chars_with' => '-',
 
+        /*
+         * StatsD daemon configuration.
+         */
         'statsd' => array(
             'host' => '127.0.0.1',
             'port' => '8125',

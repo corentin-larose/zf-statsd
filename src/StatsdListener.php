@@ -3,6 +3,7 @@ namespace ZF\Statsd;
 
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\AbstractListenerAggregate;
+use Zend\Http\Request as HttpRequest;
 use Zend\Mvc\MvcEvent;
 
 class StatsdListener extends AbstractListenerAggregate
@@ -11,6 +12,8 @@ class StatsdListener extends AbstractListenerAggregate
      * @var array
      */
     protected $config = array();
+
+    protected $eventConfig = array();
 
     /**
      * @param EventManagerInterface $events
@@ -80,7 +83,7 @@ class StatsdListener extends AbstractListenerAggregate
         if (! empty($this->config['controllers'])) {
             $cacheConfig = $this->config['controllers'];
         } else {
-            $config = array();
+            $this->eventConfig = array();
 
             return;
         }
@@ -93,7 +96,7 @@ class StatsdListener extends AbstractListenerAggregate
         } elseif (! empty($cacheConfig['*'])) {
             $controllerConfig = $cacheConfig['*'];
         } else {
-            $config = array();
+            $this->eventConfig = array();
 
             return;
         }
@@ -109,12 +112,12 @@ class StatsdListener extends AbstractListenerAggregate
         } elseif (! empty($cacheConfig['*']['*'])) {
             $methodConfig = $cacheConfig['*']['*'];
         } else {
-            $config = array();
+            $this->eventConfig = array();
 
             return;
         }
 
-        $config = $methodConfig;
+        $this->eventConfig = $methodConfig;
     }
 
     /**
