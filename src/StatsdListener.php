@@ -15,6 +15,8 @@ class StatsdListener extends AbstractListenerAggregate
 
     protected $eventConfig = array();
 
+    protected $metrics = array();
+
     /**
      * @param EventManagerInterface $events
      * @param int                   $priority
@@ -118,6 +120,33 @@ class StatsdListener extends AbstractListenerAggregate
         }
 
         $this->eventConfig = $methodConfig;
+
+        if (! empty($this->eventConfig['counter'])) {
+            $this->increment($stats, $this->eventConfig['sample_rate']);
+        }
+
+        if (! empty($this->eventConfig['ram_gauge'])) {
+            /*
+             * Since the StatsD module event is called very late in the
+             * process, this should be the max RAM used for this call.
+             */
+            $this->gauge($stats, memory_get_peak_usage());
+        }
+
+        if (! empty($this->eventConfig['timer'])) {
+            if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
+                $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
+            } else {
+                if (! defined('REQUEST_TIME_FLOAT')) {
+                    throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
+                }
+                $start = REQUEST_TIME_FLOAT;
+            }
+
+            $time = (microtime(true) - $start) * 1000;
+
+            $this->timing($stats, $time);
+        }
     }
 
     /**
@@ -162,10 +191,10 @@ class StatsdListener extends AbstractListenerAggregate
         // sampling
         $sampledData = [];
 
-        if ($sampleRate < 1) {
+        if (1 > $this->eventConfig['sample_rate']) {
             foreach ($data as $stat => $value) {
-                if ((mt_rand() / mt_getrandmax()) <= $sampleRate) {
-                    $sampledData[$stat] = "$value|@$sampleRate";
+                if ((mt_rand() / mt_getrandmax()) <= $this->eventConfig['sample_rate']) {
+                    $sampledData[$stat] = "$value|@{$this->eventConfig['sample_rate']}";
                 }
             }
         } else {
