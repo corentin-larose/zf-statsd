@@ -13,8 +13,14 @@ class StatsdListener extends AbstractListenerAggregate
      */
     protected $config = array();
 
+    /**
+     * @var array
+     */
     protected $eventConfig = array();
 
+    /**
+     * @var array
+     */
     protected $metrics = array();
 
     /**
@@ -24,47 +30,6 @@ class StatsdListener extends AbstractListenerAggregate
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $this->listeners[] = $events->attach(MvcEvent::EVENT_FINISH, array($this, 'onFinish'), -10000);
-    }
-
-    /**
-     * Decrements one or more stats counters.
-     *
-     * @param  string|array $stats      The metric(s) to decrement.
-     * @param  float|1      $sampleRate the rate (0-1) for sampling.
-     * @return boolean
-     */
-    public function decrement($stats, $sampleRate = 1)
-    {
-        $this->updateStats($stats, -1, $sampleRate, 'c');
-
-        return $this;
-    }
-
-    /**
-     * Sets one or more gauges to a value
-     *
-     * @param string|array $stats The metric(s) to set.
-     * @param float        $value The value for the stats.
-     */
-    public function gauge($stats, $value)
-    {
-        $this->updateStats($stats, $value, 1, 'g');
-
-        return $this;
-    }
-
-    /**
-     * Increments one or more stats counters
-     *
-     * @param  string|array $stats      The metric(s) to increment.
-     * @param  float|1      $sampleRate the rate (0-1) for sampling.
-     * @return boolean
-     */
-    public function increment($stats, $sampleRate = 1)
-    {
-        $this->updateStats($stats, 1, $sampleRate, 'c');
-
-        return $this;
     }
 
     /**
@@ -121,18 +86,28 @@ class StatsdListener extends AbstractListenerAggregate
 
         $this->eventConfig = $methodConfig;
 
-        if (! empty($this->eventConfig['counter'])) {
-            $this->increment($stats, $this->eventConfig['sample_rate']);
+        // Sampling
+        if (1 > $this->eventConfig['sample_rate']) {
+            if ((mt_rand() / mt_getrandmax()) > $this->eventConfig['sample_rate']) {
+                return;
+            }
         }
 
+        // Counting events
+        if (! empty($this->eventConfig['counter'])) {
+            $this->updateStats($stats, 1, 'c');
+        }
+
+        // RAM gauge
         if (! empty($this->eventConfig['ram_gauge'])) {
             /*
-             * Since the StatsD module event is called very late in the
-             * process, this should be the max RAM used for this call.
+             * Since the StatsD module event is called very late in the FINISH
+             * event, this should really be the max RAM used for this call.
              */
-            $this->gauge($stats, memory_get_peak_usage());
+            $this->updateStats($stats, memory_get_peak_usage(), 'g');
         }
 
+        // Profiling (timer)
         if (! empty($this->eventConfig['timer'])) {
             if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
                 $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
@@ -145,29 +120,10 @@ class StatsdListener extends AbstractListenerAggregate
 
             $time = (microtime(true) - $start) * 1000;
 
-            $this->timing($stats, $time);
+            $this->updateStats($stats, $time, 'ms');
         }
-    }
 
-    /**
-     * A "Set" is a count of unique events.
-     * This data type acts like a counter, but supports counting
-     * of unique occurences of values between flushes. The backend
-     * receives the number of unique events that happened since
-     * the last flush.
-     *
-     * The reference use case involved tracking the number of active
-     * and logged in users by sending the current userId of a user
-     * with each request with a key of "uniques" (or similar).
-     *
-     * @param string|array $stats The metric(s) to set.
-     * @param float        $value The value for the stats.
-     */
-    public function set($stats, $value)
-    {
-        $this->updateStats($stats, $value, 1, 's');
-
-        return $this;
+        $this->send();
     }
 
     /**
@@ -188,21 +144,6 @@ class StatsdListener extends AbstractListenerAggregate
      */
     public function send($data, $sampleRate = 1)
     {
-        // sampling
-        $sampledData = [];
-
-        if (1 > $this->eventConfig['sample_rate']) {
-            foreach ($data as $stat => $value) {
-                if ((mt_rand() / mt_getrandmax()) <= $this->eventConfig['sample_rate']) {
-                    $sampledData[$stat] = "$value|@{$this->eventConfig['sample_rate']}";
-                }
-            }
-        } else {
-            $sampledData = $data;
-        }
-
-        if (empty($sampledData)) { return $this; }
-
         try {
             $fp = fsockopen("udp://{$this->config['statsd']['host']}", $this->config['statsd']['port']);
 
@@ -221,28 +162,14 @@ class StatsdListener extends AbstractListenerAggregate
     }
 
     /**
-    * Sets one or more timing values
-    *
-    * @param string|array $stats The metric(s) to set.
-    * @param float $time The elapsed time (ms) to log
-    */
-    public function timing($stats, $time)
-    {
-        $this->updateStats($stats, $time, 1, 'ms');
-
-        return $this;
-    }
-
-    /**
      * Updates one or more stats.
      *
      * @param  string|array $stats      The metric(s) to update. Should be either a string or array of metrics.
-     * @param  int|1        $delta      The amount to increment/decrement each metric by.
-     * @param  float|1      $sampleRate the rate (0-1) for sampling.
-     * @param  string|c     $metric     The metric type ("c" for count, "ms" for timing, "g" for gauge, "s" for set)
+     * @param  int          $delta      The amount to increment/decrement each metric by.
+     * @param  string       $metric     The metric type ("c" for count, "ms" for timing, "g" for gauge, "s" for set)
      * @return boolean
      */
-    protected function updateStats($stats, $delta = 1, $sampleRate = 1, $metric = 'c')
+    protected function updateStats($stats, $delta, $metric)
     {
         if (!is_array($stats)) {
             $stats = [$stats];
@@ -254,6 +181,6 @@ class StatsdListener extends AbstractListenerAggregate
             $data[$stat] = "$delta|$metric";
         }
 
-        return $this->send($data, $sampleRate);
+        return $this;
     }
 }
