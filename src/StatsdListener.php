@@ -4,6 +4,7 @@ namespace ZF\Statsd;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\AbstractListenerAggregate;
 use Zend\Http\Request as HttpRequest;
+use Zend\Http\Response as HttpResponse;
 use Zend\Mvc\MvcEvent;
 
 class StatsdListener extends AbstractListenerAggregate
@@ -22,6 +23,67 @@ class StatsdListener extends AbstractListenerAggregate
      * @var array
      */
     protected $metrics = array();
+
+    /**
+     * @return self
+     */
+    protected function addCounter()
+    {
+        if (! empty($this->eventConfig['counter'])) {
+            $this->metrics[$stat] = "1|c";
+
+            // Sampling
+            if (
+                (1 > $this->eventConfig['sample_rate'])
+                and ((mt_rand() / mt_getrandmax()) > $this->eventConfig['sample_rate'])
+            ) {
+                $this->metrics[$stat] .= "|@{$this->eventConfig['sample_rate']}";
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return self
+     */
+    protected function addRamGauge()
+    {
+        if (! empty($this->eventConfig['ram_gauge'])) {
+            /*
+             * Since the StatsD module event is called very late in the FINISH
+             * event, this should really be the max RAM used for this call.
+             */
+            $value = memory_get_peak_usage();
+
+            $this->metrics[$stat] = "$value|g";
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return self
+     */
+    protected function addTimer()
+    {
+        if (! empty($this->eventConfig['timer'])) {
+            if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
+                $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
+            } else {
+                if (! defined('REQUEST_TIME_FLOAT')) {
+                    throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
+                }
+                $start = REQUEST_TIME_FLOAT;
+            }
+
+            $time = (microtime(true) - $start) * 1000;
+
+            $this->metrics[$stat] = "$time|ms";
+        }
+
+        return $this;
+    }
 
     /**
      * @param EventManagerInterface $events
@@ -57,73 +119,31 @@ class StatsdListener extends AbstractListenerAggregate
 
         $controller = $e->getRouteMatch()
             ->getParam('controller');
-
-        if (! empty($cacheConfig[$controller])) {
-            $controllerConfig = $cacheConfig[$controller];
-        } elseif (! empty($cacheConfig['*'])) {
-            $controllerConfig = $cacheConfig['*'];
-        } else {
-            $this->eventConfig = array();
-
-            return;
-        }
-
         $method = strtolower($request->getMethod());
 
-        if (! empty($controllerConfig[$method])) {
-            $methodConfig = $controllerConfig[$method];
-        } elseif (! empty($controllerConfig['*'])) {
-            $methodConfig = $controllerConfig['*'];
-        } elseif (! empty($cacheConfig['*'][$method])) {
-            $methodConfig = $cacheConfig['*'][$method];
-        } elseif (! empty($cacheConfig['*']['*'])) {
-            $methodConfig = $cacheConfig['*']['*'];
-        } else {
-            $this->eventConfig = array();
-
+        $response = $e->getResponse();
+        if (! $response instanceof HttpResponse) {
             return;
         }
 
-        $this->eventConfig = $methodConfig;
+        $statusCode  = $response->getStatusCode();
+        $contentType = strtolower($response->getHeaders()->get('content-type')->getFieldValue());
 
-        // Sampling
-        if (1 > $this->eventConfig['sample_rate']) {
-            if ((mt_rand() / mt_getrandmax()) > $this->eventConfig['sample_rate']) {
-                return;
-            }
-        }
+        $this->resetMetrics()
+            ->addCounter()
+            ->addRamGauge()
+            ->addTimer()
+            ->send();
+    }
 
-        // Counting events
-        if (! empty($this->eventConfig['counter'])) {
-            $this->updateStats($stats, 1, 'c');
-        }
+    /**
+     * @return self
+     */
+    protected function resetMetrics()
+    {
+        $this->metrics = array();
 
-        // RAM gauge
-        if (! empty($this->eventConfig['ram_gauge'])) {
-            /*
-             * Since the StatsD module event is called very late in the FINISH
-             * event, this should really be the max RAM used for this call.
-             */
-            $this->updateStats($stats, memory_get_peak_usage(), 'g');
-        }
-
-        // Profiling (timer)
-        if (! empty($this->eventConfig['timer'])) {
-            if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
-                $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
-            } else {
-                if (! defined('REQUEST_TIME_FLOAT')) {
-                    throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
-                }
-                $start = REQUEST_TIME_FLOAT;
-            }
-
-            $time = (microtime(true) - $start) * 1000;
-
-            $this->updateStats($stats, $time, 'ms');
-        }
-
-        $this->send();
+        return $this;
     }
 
     /**
@@ -141,44 +161,27 @@ class StatsdListener extends AbstractListenerAggregate
 
     /**
      * Sends the metrics over UDP
+     *
+     * @return self
      */
-    public function send($data, $sampleRate = 1)
+    protected function send()
     {
         try {
-            $fp = fsockopen("udp://{$this->config['statsd']['host']}", $this->config['statsd']['port']);
+            if (! empty($this->metrics)) {
+                $fp = fsockopen("udp://{$this->config['statsd']['host']}", $this->config['statsd']['port']);
 
-            if (! $fp) { return; }
+                if (! $fp) { return; }
 
-            foreach ($sampledData as $stat => $value) {
-                fwrite($fp, "$stat:$value");
+                foreach ($this->metrics as $stat => $value) {
+                    fwrite($fp, "$stat:$value");
+                }
+
+                fclose($fp);
+
+                $this->resetMetrics();
             }
-
-            fclose($fp);
         } catch (\Exception $e) {
             // Ignores failures silently
-        }
-
-        return $this;
-    }
-
-    /**
-     * Updates one or more stats.
-     *
-     * @param  string|array $stats      The metric(s) to update. Should be either a string or array of metrics.
-     * @param  int          $delta      The amount to increment/decrement each metric by.
-     * @param  string       $metric     The metric type ("c" for count, "ms" for timing, "g" for gauge, "s" for set)
-     * @return boolean
-     */
-    protected function updateStats($stats, $delta, $metric)
-    {
-        if (!is_array($stats)) {
-            $stats = [$stats];
-        }
-
-        $data = [];
-
-        foreach ($stats as $stat) {
-            $data[$stat] = "$delta|$metric";
         }
 
         return $this;
