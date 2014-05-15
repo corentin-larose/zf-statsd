@@ -32,6 +32,30 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @covers \ZF\Statsd\StatsdListener::addCounter()
+     */
+    public function testAddCounter()
+    {
+        $this->markTestIncomplete();
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::addRamGauge()
+     */
+    public function testAddRamGauge()
+    {
+        $this->markTestIncomplete();
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::addTimer()
+     */
+    public function testAddTimer()
+    {
+        $this->markTestIncomplete();
+    }
+
+    /**
      * @coversNothing
      * @dataProvider methodsReturnSelfDataProvider
      *
@@ -43,6 +67,24 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         $ret = call_user_func_array(array($this->instance, $method), $args);
 
         $this->assertInstanceOf('\ZF\Statsd\StatsdListener', $ret);
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::onFinish()
+     */
+    public function testOnFinish()
+    {
+        $this->markTestIncomplete();
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::resetMetrics()
+     */
+    public function testResetMetrics()
+    {
+        $this->instance->setMetrics(array('foo' => 'bar'));
+        $this->instance->resetMetrics();
+        $this->assertEmpty($this->instance->getMetrics());
     }
 
     /**
@@ -68,7 +110,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
             $errorcode = socket_last_error();
             $errormsg  = socket_strerror($errorcode);
 
-            $this->markTestIncomplete("Couldn't create socket: [$errorcode] $errormsg");
+            $this->fail("Couldn't create socket: [$errorcode] $errormsg");
         }
 
         // Binds the source address
@@ -76,7 +118,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
             $errorcode = socket_last_error();
             $errormsg  = socket_strerror($errorcode);
 
-            $this->markTestIncomplete("Could not bind socket: [$errorcode] $errormsg");
+            $this->fail("Could not bind socket: [$errorcode] $errormsg");
         }
 
         $this->assertSame($metrics, $this->instance->getMetrics());
