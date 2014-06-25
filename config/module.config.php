@@ -7,35 +7,10 @@ return array(
     ),
 
     'zf-statsd' => array(
-        'controllers' => array(
-            '<controller>' => array(
-                '<http-method>'  => array(
-                    '<http-code>'  => array(
-                        '<http-content-type>'  => array(
-                            'counter'          => true,
-                            'name'             => '',
-                            'ram_gauge'        => true,
-                            'sample_rate'      => 1,
-                            'timer'            => true,
-                        ),
-                    ),
-                ),
-            ),
-        ),
-
-        /*
-         * Counter metric name:
-         * [<metric_prefix>.][<counter_prefix>.]<controller>.<http-method>.<http-code>.<http-content-type>[.<name>][.<counter_suffix>]
-         * For instance: php-fpm-01.counters.my-controller.post.201.application-json-hal.signin-in.count
-         *
-         * Gauge metric name:
-         * [<metric_prefix>.][<gauge_prefix>.]<controller>.<http-method>.<http-code>.<http-content-type>[.<name>][.<gauge_suffix>]
-         * For instance: php-fpm-01.timers.my-controller.post.201.application-json-hal.signin-in.timer
-         *
-         * Timer metric name:
-         * [<timer_prefix>.][<gauge_prefix>.]<controller>.<http-method>.<http-code>.<http-content-type>[.<name>][.<timer_suffix>]
-         * For instance: php-fpm-01.gauges.my-controller.post.201.application-json-hal.signin-in.gauge
-         */
+        'counter'          => true,
+        'ram_gauge'        => true,
+        'sample_rate'      => 1,
+        'timer'            => true,
 
         /*
          * Whether to enable http cache.
@@ -49,7 +24,7 @@ return array(
         'timer_prefix'   => '',
 
         // Suffixes
-        'counter_suffix' => '.count',
+        'counter_suffix' => 'count',
         'gauge_suffix'   => '',
         'timer_suffix'   => '',
 

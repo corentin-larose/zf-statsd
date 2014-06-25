@@ -94,6 +94,37 @@ class StatsdListener extends AbstractListenerAggregate
         $this->listeners[] = $events->attach(MvcEvent::EVENT_FINISH, array($this, 'onFinish'), -10000);
     }
 
+    protected function getMetricNames($controller, $method, $statusCode, $contentType)
+    {
+        $metricName = array();
+
+        $this->config['metric_prefix']
+            and $metricName[] = $this->config['metric_prefix'];
+        $metricName[] = $controller;
+        $metricName[] = $method;
+        $metricName[] = $statusCode;
+        $metricName[] = $contentType;
+
+        foreach ($metricName as $k => $v) {
+            if (! empty($this->config['replace_special_chars_with'])) {
+                if (! empty($this->config['replace_dots'])) {
+                    $metricName[$k] = preg_replace('/[^a-z0-9]+/ui', $this->config['replace_special_chars_with'], $v);
+                } else {
+                    $metricName[$k] = preg_replace('/[^a-z0-9.]+/ui', $this->config['replace_special_chars_with'], $v);
+                }
+            }
+
+            if (! empty($this->config['override_case_callback']) and is_callable($this->config['override_case_callback'])) {
+                $metricName[$k] = call_user_func($this->config['override_case_callback'], $v);
+            }
+        }
+
+        $this->config['counter_prefix']
+            and $counterName[] = $this->config['counter_prefix'];
+        $this->config['counter_suffix']
+            and $counterName[] = $this->config['counter_suffix'];
+    }
+
     /**
      * @param MvcEvent $e
      */
@@ -109,11 +140,8 @@ class StatsdListener extends AbstractListenerAggregate
             return;
         }
 
-        if (! empty($this->config['controllers'])) {
-            $cacheConfig = $this->config['controllers'];
-        } else {
-            $this->eventConfig = array();
-
+        $response = $e->getResponse();
+        if (! $response instanceof HttpResponse) {
             return;
         }
 
@@ -121,19 +149,30 @@ class StatsdListener extends AbstractListenerAggregate
             ->getParam('controller');
         $method = strtolower($request->getMethod());
 
-        $response = $e->getResponse();
-        if (! $response instanceof HttpResponse) {
-            return;
-        }
-
         $statusCode  = $response->getStatusCode();
         $contentType = strtolower($response->getHeaders()->get('content-type')->getFieldValue());
 
-        $this->resetMetrics()
-            ->addCounter()
-            ->addRamGauge()
-            ->addTimer()
-            ->send();
+        list(
+            $counterName,
+            $ramGaugeName,
+            $timerName
+        ) = $this->getMetricNames($controller, $method, $statusCode, $contentType);
+
+        $this->resetMetrics();
+
+        if (! empty($this->config['counter'])) {
+            $this->addCounter($counterName);
+        }
+
+        if (! empty($this->config['ram_gauge'])) {
+            $this->addRamGauge($ramGaugeName);
+        }
+
+        if (! empty($this->config['timer'])) {
+            $this->addTimer($timerName);
+        }
+
+        $this->send();
     }
 
     /**
