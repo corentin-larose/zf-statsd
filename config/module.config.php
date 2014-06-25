@@ -37,6 +37,11 @@ return array(
          * For instance: php-fpm-01.gauges.my-controller.post.201.application-json-hal.signin-in.gauge
          */
 
+        /*
+         * Whether to enable http cache.
+         */
+        'enable' => true,
+
         // Prefixes
         'counter_prefix' => '',
         'gauge_prefix'   => '',
