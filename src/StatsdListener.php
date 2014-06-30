@@ -25,9 +25,10 @@ class StatsdListener extends AbstractListenerAggregate
     protected $metrics = array();
 
     /**
+     * @param string $metricName
      * @return self
      */
-    protected function addMemory()
+    protected function addMemory($metricName)
     {
         /*
          * Since the StatsD module event is called very late in the FINISH
@@ -37,15 +38,16 @@ class StatsdListener extends AbstractListenerAggregate
          */
         $value = memory_get_peak_usage() * 1000;
 
-        $this->metrics[$stat] = "$value|ms";
+        $this->metrics[$metricName] = "$value|ms";
 
         return $this;
     }
 
     /**
+     * @param string $metricName
      * @return self
      */
-    protected function addTimer()
+    protected function addTimer($metricName)
     {
         if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
             $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
@@ -58,7 +60,7 @@ class StatsdListener extends AbstractListenerAggregate
 
         $time = (microtime(true) - $start) * 1000;
 
-        $this->metrics[$stat] = "$time|ms";
+        $this->metrics[$metricName] = "$time|ms";
 
         return $this;
     }

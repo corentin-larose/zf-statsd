@@ -17,12 +17,11 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     public function methodsReturnSelfDataProvider()
     {
         return array(
-            array('addCounter', array()),
-            array('addRamGauge', array()),
-            array('addTimer', array()),
-            array('resetMetrics', array()),
-            array('send', array()),
-            array('setConfig', array(array())),
+            array('addMemory', array('')),
+            array('addTimer', array('')),
+            array('resetMetrics', array('')),
+            array('send', array('')),
+            array('setConfig', array(array(''))),
         );
     }
 
@@ -32,19 +31,15 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @covers \ZF\Statsd\StatsdListener::addCounter()
+     * @covers \ZF\Statsd\StatsdListener::addMemory()
      */
-    public function testAddCounter()
+    public function testAddMemory()
     {
-        $this->markTestIncomplete();
-    }
+        $this->instance->resetMetrics();
+        $this->instance->addMemory('metric_name');
 
-    /**
-     * @covers \ZF\Statsd\StatsdListener::addRamGauge()
-     */
-    public function testAddRamGauge()
-    {
-        $this->markTestIncomplete();
+        $metrics = $this->instance->getMetrics();
+        $this->assertRegExp('/[0-9]+|ms/', $metrics['metric_name']);
     }
 
     /**
@@ -52,7 +47,11 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testAddTimer()
     {
-        $this->markTestIncomplete();
+        $this->instance->resetMetrics();
+        $this->instance->addMemory('metric_name');
+
+        $metrics = $this->instance->getMetrics();
+        $this->assertRegExp('/[0-9]+|ms/', $metrics['metric_name']);
     }
 
     /**
@@ -62,7 +61,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      * @param string $method
      * @param array  $args
      */
-    public function testMethodsReturnsSelf($method, $args)
+    public function testMethodsReturnSelf($method, $args)
     {
         $ret = call_user_func_array(array($this->instance, $method), $args);
 
@@ -139,6 +138,10 @@ class Wrapper extends StatsdListener
 {
     public function __call($method, $args)
     {
+        if (! method_exists($this, $method)) {
+            throw new \LogicException("Unknown method '$method'");
+        }
+
         return call_user_func_array([$this, $method], $args);
     }
 
