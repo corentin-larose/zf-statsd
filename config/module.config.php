@@ -18,7 +18,7 @@ return array(
          */
 
         /*
-         * Whether to enable http cache.
+         * Whether to enable stats.
          */
         'enable' => true,
 
