@@ -7,10 +7,15 @@ return array(
     ),
 
     'zf-statsd' => array(
-        'counter'          => true,
-        'ram_gauge'        => true,
-        'sample_rate'      => 1,
-        'timer'            => true,
+        /*
+         * Memory metric name:
+         * [<metric_prefix>.][<memory_prefix>.]<controller>.<http-method>.<http-code>.<request-http-content-type>.<response-http-content-type>.<mvc-event>[.<memory_suffix>]
+         * For instance: my-controller.post.201.application-json.application-json-hal.boostrap
+         *
+         * Timer metric name:
+         * [<metric_prefix>.][<timer_prefix>.]<controller>.<http-method>.<http-code>.<request-http-content-type>.<response-http-content-type>.<mvc-event>[.<timer_suffix>]
+         * For instance: my-controller.post.201.application-json.application-json-hal.boostrap
+         */
 
         /*
          * Whether to enable http cache.
@@ -18,14 +23,13 @@ return array(
         'enable' => true,
 
         // Prefixes
-        'counter_prefix' => '',
-        'gauge_prefix'   => '',
+        'memory_prefix'  => '',
         'metric_prefix'  => gethostname(),
         'timer_prefix'   => '',
 
         // Suffixes
         'counter_suffix' => 'count',
-        'gauge_suffix'   => '',
+        'memory_suffix'  => '',
         'timer_suffix'   => '',
 
         // Chars and case overriding

@@ -27,37 +27,17 @@ class StatsdListener extends AbstractListenerAggregate
     /**
      * @return self
      */
-    protected function addCounter()
+    protected function addMemory()
     {
-        if (! empty($this->eventConfig['counter'])) {
-            $this->metrics[$stat] = "1|c";
+        /*
+         * Since the StatsD module event is called very late in the FINISH
+         * event, this should really be the max RAM used for this call.
+         *
+         * We use a timer metric type since it can handle whatever number.
+         */
+        $value = memory_get_peak_usage() * 1000;
 
-            // Sampling
-            if (
-                (1 > $this->eventConfig['sample_rate'])
-                and ((mt_rand() / mt_getrandmax()) > $this->eventConfig['sample_rate'])
-            ) {
-                $this->metrics[$stat] .= "|@{$this->eventConfig['sample_rate']}";
-            }
-        }
-
-        return $this;
-    }
-
-    /**
-     * @return self
-     */
-    protected function addRamGauge()
-    {
-        if (! empty($this->eventConfig['ram_gauge'])) {
-            /*
-             * Since the StatsD module event is called very late in the FINISH
-             * event, this should really be the max RAM used for this call.
-             */
-            $value = memory_get_peak_usage();
-
-            $this->metrics[$stat] = "$value|g";
-        }
+        $this->metrics[$stat] = "$value|ms";
 
         return $this;
     }
@@ -67,20 +47,18 @@ class StatsdListener extends AbstractListenerAggregate
      */
     protected function addTimer()
     {
-        if (! empty($this->eventConfig['timer'])) {
-            if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
-                $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
-            } else {
-                if (! defined('REQUEST_TIME_FLOAT')) {
-                    throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
-                }
-                $start = REQUEST_TIME_FLOAT;
+        if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
+            $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
+        } else {
+            if (! defined('REQUEST_TIME_FLOAT')) {
+                throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
             }
-
-            $time = (microtime(true) - $start) * 1000;
-
-            $this->metrics[$stat] = "$time|ms";
+            $start = REQUEST_TIME_FLOAT;
         }
+
+        $time = (microtime(true) - $start) * 1000;
+
+        $this->metrics[$stat] = "$time|ms";
 
         return $this;
     }
@@ -153,26 +131,14 @@ class StatsdListener extends AbstractListenerAggregate
         $contentType = strtolower($response->getHeaders()->get('content-type')->getFieldValue());
 
         list(
-            $counterName,
-            $ramGaugeName,
+            $memory,
             $timerName
         ) = $this->getMetricNames($controller, $method, $statusCode, $contentType);
 
-        $this->resetMetrics();
-
-        if (! empty($this->config['counter'])) {
-            $this->addCounter($counterName);
-        }
-
-        if (! empty($this->config['ram_gauge'])) {
-            $this->addRamGauge($ramGaugeName);
-        }
-
-        if (! empty($this->config['timer'])) {
-            $this->addTimer($timerName);
-        }
-
-        $this->send();
+        $this->resetMetrics()
+            ->addMemory($memory)
+            ->addTimer($timerName)
+            ->send();
     }
 
     /**
