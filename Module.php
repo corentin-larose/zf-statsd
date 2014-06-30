@@ -1,5 +1,5 @@
 <?php
-namespace ZF\HttpCache;
+namespace ZF\Statsd;
 
 class Module
 {
