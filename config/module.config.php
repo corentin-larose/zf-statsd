@@ -27,8 +27,10 @@ return array(
         'metric_prefix'  => gethostname(),
         'timer_prefix'   => '',
 
+        'memory_name'  => 'memory',
+        'timer_name'   => 'duration',
+
         // Suffixes
-        'counter_suffix' => 'count',
         'memory_suffix'  => '',
         'timer_suffix'   => '',
 

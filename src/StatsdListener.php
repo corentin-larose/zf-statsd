@@ -78,31 +78,31 @@ class StatsdListener extends AbstractListenerAggregate
     {
         $metricName = array();
 
-        $this->config['metric_prefix']
-            and $metricName[] = $this->config['metric_prefix'];
+        empty($this->config['metric_prefix'])
+            or $metricName[] = $this->config['metric_prefix'];
         $metricName[] = $controller;
         $metricName[] = $method;
         $metricName[] = $statusCode;
         $metricName[] = $contentType;
 
-        foreach ($metricName as $k => $v) {
+        foreach ($metricName as &$v) {
             if (! empty($this->config['replace_special_chars_with'])) {
                 if (! empty($this->config['replace_dots'])) {
-                    $metricName[$k] = preg_replace('/[^a-z0-9]+/ui', $this->config['replace_special_chars_with'], $v);
+                    $v = preg_replace('/[^a-z0-9]+/ui', $this->config['replace_special_chars_with'], $v);
                 } else {
-                    $metricName[$k] = preg_replace('/[^a-z0-9.]+/ui', $this->config['replace_special_chars_with'], $v);
+                    $v = preg_replace('/[^a-z0-9.]+/ui', $this->config['replace_special_chars_with'], $v);
                 }
             }
 
             if (! empty($this->config['override_case_callback']) and is_callable($this->config['override_case_callback'])) {
-                $metricName[$k] = call_user_func($this->config['override_case_callback'], $v);
+                $v = call_user_func($this->config['override_case_callback'], $v);
             }
         }
 
-        $this->config['counter_prefix']
-            and $counterName[] = $this->config['counter_prefix'];
-        $this->config['counter_suffix']
-            and $counterName[] = $this->config['counter_suffix'];
+        $memory   = implode('.', $metricName) . '.' . $this->config['memory_name'];
+        $duration = implode('.', $metricName) . '.' . $this->config['timer_name'];
+
+        return array($memory, $duration);
     }
 
     /**
