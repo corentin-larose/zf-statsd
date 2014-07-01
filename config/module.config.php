@@ -8,35 +8,19 @@ return array(
 
     'zf-statsd' => array(
         /*
-         * Memory metric name:
-         * [<metric_prefix>.][<memory_prefix>.]<controller>.<http-method>.<http-code>.<request-http-content-type>.<response-http-content-type>.<mvc-event>[.<memory_suffix>]
-         * For instance: my-controller.post.201.application-json.application-json-hal.boostrap
-         *
-         * Timer metric name:
-         * [<metric_prefix>.][<timer_prefix>.]<controller>.<http-method>.<http-code>.<request-http-content-type>.<response-http-content-type>.<mvc-event>[.<timer_suffix>]
-         * For instance: my-controller.post.201.application-json.application-json-hal.boostrap
-         */
-
-        /*
          * Whether to enable stats.
          */
         'enable' => true,
 
-        // Prefixes
-        'memory_prefix'  => '',
-        'metric_prefix'  => gethostname(),
-        'timer_prefix'   => '',
+        // web-front-01.api.account.get.200.application-json.application-json-hal.route.memory
+        'memory_pattern' => '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.memory',
 
-        'memory_name'  => 'memory',
-        'timer_name'   => 'duration',
+        // web-front-01.api.account.get.200.application-json.application-json-hal.route.duration
+        'timer_pattern'  => '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.duration',
 
-        // Suffixes
-        'memory_suffix'  => '',
-        'timer_suffix'   => '',
-
-        // Chars and case overriding
-        'override_case_callback'     => 'strtolower', // strtoupper, strtolower, ucwords, etc.
-        'replace_dots'               => true,
+        // Metrics overriding
+        'metric_tokens_callback'     => 'strtolower', // strtoupper, strtolower, ucwords, etc.
+        'replace_dots_in_tokens'     => true,
         'replace_special_chars_with' => '-',
 
         /*

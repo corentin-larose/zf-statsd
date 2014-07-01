@@ -22,13 +22,19 @@ class StatsdListener extends AbstractListenerAggregate
     /**
      * @var array
      */
+    protected $events = array();
+
+    /**
+     * @var array
+     */
     protected $metrics = array();
 
     /**
      * @param string $metricName
+     * @param string $value
      * @return self
      */
-    protected function addMemory($metricName)
+    protected function addMemory($metricName, $value = null)
     {
         /*
          * Since the StatsD module event is called very late in the FINISH
@@ -36,7 +42,9 @@ class StatsdListener extends AbstractListenerAggregate
          *
          * We use a timer metric type since it can handle whatever number.
          */
-        $value = memory_get_peak_usage() * 1000;
+        $value or $value = memory_get_peak_usage();
+
+        $value *= 1000;
 
         $this->metrics[$metricName] = "$value|ms";
 
@@ -47,18 +55,9 @@ class StatsdListener extends AbstractListenerAggregate
      * @param string $metricName
      * @return self
      */
-    protected function addTimer($metricName)
+    protected function addTimer($metricName, $time)
     {
-        if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
-            $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
-        } else {
-            if (! defined('REQUEST_TIME_FLOAT')) {
-                throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
-            }
-            $start = REQUEST_TIME_FLOAT;
-        }
-
-        $time = (microtime(true) - $start) * 1000;
+        $time *= 1000;
 
         $this->metrics[$metricName] = "$time|ms";
 
@@ -71,38 +70,65 @@ class StatsdListener extends AbstractListenerAggregate
      */
     public function attach(EventManagerInterface $events, $priority = 1)
     {
-        $this->listeners[] = $events->attach(MvcEvent::EVENT_FINISH, array($this, 'onFinish'), -10000);
+        $this->listeners[] = $events->attach('*', array($this, 'onEventStart'), 10000);
+        $this->listeners[] = $events->attach('*', array($this, 'onEventEnd'), -10000);
+        $this->listeners[] = $events->attach(MvcEvent::EVENT_FINISH, array($this, 'onFinish'), -11000);
     }
 
-    protected function getMetricNames($controller, $method, $statusCode, $contentType)
+    /**
+     * @throws \LogicException
+     * @return integer
+     */
+    protected function getRequestTime()
     {
-        $metricName = array();
-
-        empty($this->config['metric_prefix'])
-            or $metricName[] = $this->config['metric_prefix'];
-        $metricName[] = $controller;
-        $metricName[] = $method;
-        $metricName[] = $statusCode;
-        $metricName[] = $contentType;
-
-        foreach ($metricName as &$v) {
-            if (! empty($this->config['replace_special_chars_with'])) {
-                if (! empty($this->config['replace_dots'])) {
-                    $v = preg_replace('/[^a-z0-9]+/ui', $this->config['replace_special_chars_with'], $v);
-                } else {
-                    $v = preg_replace('/[^a-z0-9.]+/ui', $this->config['replace_special_chars_with'], $v);
-                }
+        if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
+            $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
+        } else {
+            if (! defined('REQUEST_TIME_FLOAT')) {
+                throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
             }
-
-            if (! empty($this->config['override_case_callback']) and is_callable($this->config['override_case_callback'])) {
-                $v = call_user_func($this->config['override_case_callback'], $v);
-            }
+            $start = REQUEST_TIME_FLOAT;
         }
 
-        $memory   = implode('.', $metricName) . '.' . $this->config['memory_name'];
-        $duration = implode('.', $metricName) . '.' . $this->config['timer_name'];
+        return $start;
+    }
 
-        return array($memory, $duration);
+    /**
+     * @param integer $end
+     * @param integer $start
+     * @return integer
+     */
+    protected function getTimeDiff($end, $start = null)
+    {
+        $start or $start = $this->getRequestTime();
+
+        return (microtime(true) - $start);
+    }
+
+    /**
+     * @param MvcEvent $e
+     */
+    public function onEventEnd(MvcEvent $e)
+    {
+        $start = $this->events[$e->getName()]['start'];
+        unset($this->events[$e->getName()]['start']);
+
+        $this->events[$e->getName()]['duration'] = (microtime(true) - $start);
+        $this->events[$e->getName()]['memory']   = memory_get_peak_usage();
+    }
+
+    /**
+     * @param MvcEvent $e
+     */
+    public function onEventStart(MvcEvent $e)
+    {
+        // First event just follows boostrap.
+        if (empty($this->events['bootstrap'])) {
+            $this->events['bootstrap']['duration'] = (microtime(true) - $this->getRequestTime());
+            $this->events['bootstrap']['memory']   = memory_get_peak_usage();
+        }
+
+        $this->events[$e->getName()]['start'] = microtime(true);
     }
 
     /**
@@ -125,22 +151,102 @@ class StatsdListener extends AbstractListenerAggregate
             return;
         }
 
-        $controller = $e->getRouteMatch()
-            ->getParam('controller');
-        $method = strtolower($request->getMethod());
-
-        $statusCode  = $response->getStatusCode();
-        $contentType = strtolower($response->getHeaders()->get('content-type')->getFieldValue());
-
         list(
-            $memory,
-            $timerName
-        ) = $this->getMetricNames($controller, $method, $statusCode, $contentType);
+            $memoryMetric,
+            $timerMetric
+        ) = $this->prepareMetricNames($e);
 
-        $this->resetMetrics()
-            ->addMemory($memory)
-            ->addTimer($timerName)
+        $this->resetMetrics();
+
+        foreach ($this->events as $event) {
+        }
+
+        $this->resetEvents();
+
+        $this->addMemory($memoryMetric)
+            ->addTimer($timerMetric)
             ->send();
+    }
+
+    /**
+     * @param MvcEvent $e
+     */
+    protected function prepareMetricNames(MvcEvent $e)
+    {
+        $request = $e->getRequest();
+        $response = $e->getResponse();
+
+        $memoryConfig = $this->config['memory_pattern'];
+        $timerConfig  = $this->config['timer_pattern'];
+
+        $tokens = array();
+
+        if (
+            strpos($memoryConfig, '%controller%')
+            or strpos($timerConfig, '%controller%')
+        ) {
+            $tokens['controller'] = $e->getRouteMatch()
+            ->getParam('controller');
+        }
+
+        if (
+            strpos($memoryConfig, '%http-method%')
+            or strpos($timerConfig, '%http-method%')
+        ) {
+            $tokens['http-method'] = $request->getMethod();
+        }
+
+        if (
+            strpos($memoryConfig, '%http-code%')
+            or strpos($timerConfig, '%http-code%')
+        ) {
+            $tokens['http-code'] = $response->getStatusCode();
+        }
+
+        if (
+            strpos($memoryConfig, '%request-content-type%')
+            or strpos($timerConfig, '%request-content-type%')
+        ) {
+            $tokens['request-content-type'] = $request->getHeaders()->get('request-content-type')->getFieldValue();
+        }
+
+        if (
+            strpos($memoryConfig, '%response-content-type%')
+            or strpos($timerConfig, '%response-content-type%')
+        ) {
+            $tokens['response-content-type'] = $response->getHeaders()->get('response-content-type')->getFieldValue();
+        }
+
+        $regex =  empty($this->config['replace_dots_in_tokens'])
+        ? '/[^a-z0-9]+/ui'
+            : '/[^a-z0-9.]+/ui';
+
+        foreach ($tokens as &$v) {
+            $v = preg_replace('/[^a-z0-9]+/ui', $this->config['replace_special_chars_with'], $v);
+        }
+
+        if (is_callable($this->config['metric_tokens_callback'])) {
+            foreach ($tokens as &$v) {
+                $v = call_user_func($this->config['metric_tokens_callback'], $v);
+            }
+        }
+
+        foreach ($tokens as $k => $v) {
+            $memoryConfig = str_replace("%$k%", $v, $memoryConfig);
+            $timerConfig  = str_replace("%$k%", $v, $timerConfig);
+        }
+
+        return array($memoryConfig, $timerConfig);
+    }
+
+    /**
+     * @return self
+     */
+    protected function resetEvents()
+    {
+        $this->events = array();
+
+        return $this;
     }
 
     /**
