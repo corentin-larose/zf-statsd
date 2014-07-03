@@ -2,6 +2,7 @@
 namespace ZFTest\Statsd;
 
 use ZF\Statsd\StatsdListener;
+use Zend\Mvc\MvcEvent;
 
 class StatsdListenerTest extends \PHPUnit_Framework_TestCase
 {
@@ -11,6 +12,30 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     protected $instance;
 
     /**
+     * @see testAddMemory
+     * @return array
+     */
+    public function addMemoryDataProvider()
+    {
+        return array(
+            array('metric_name'),
+            array('metric_name', 5),
+        );
+    }
+
+    /**
+     * @see testAddTimer
+     * @return array
+     */
+    public function addTimerDataProvider()
+    {
+        return array(
+            array('metric_name', 100),
+            array('metric_name', 5),
+        );
+    }
+
+    /**
      * @see testMethodsReturnSelf
      * @return array
      */
@@ -18,10 +43,35 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     {
         return array(
             array('addMemory', array('')),
-            array('addTimer', array('')),
-            array('resetMetrics', array('')),
-            array('send', array('')),
-            array('setConfig', array(array(''))),
+            array('addTimer', array('', 1000)),
+            array('resetEvents', array()),
+            array('resetMetrics', array()),
+            array('send', array()),
+            array('setConfig', array(array())),
+        );
+    }
+
+    /**
+     * @see testPrepareMetricNames
+     * @return array
+     */
+    public function prepareMetricNamesDataProvider()
+    {
+        return array(
+            array(
+                new MvcEvent('route'),
+                '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.memory',
+                '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.duration',
+                hostname() . '.',
+                hostname() . '.',
+            ),
+            array(
+                new MvcEvent(),
+                '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.memory',
+                '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.duration',
+                hostname() . '.',
+                hostname() . '.',
+            ),
         );
     }
 
@@ -32,26 +82,39 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
 
     /**
      * @covers \ZF\Statsd\StatsdListener::addMemory()
+     * @dataProvider addMemoryDataProvider
+     *
+     * @param string $metricName
+     * @param integer $value
      */
-    public function testAddMemory()
+    public function testAddMemory($metricName, $value = null)
     {
         $this->instance->resetMetrics();
-        $this->instance->addMemory('metric_name');
+        $this->instance->addMemory($metricName, $value);
 
         $metrics = $this->instance->getMetrics();
-        $this->assertRegExp('/[0-9]+|ms/', $metrics['metric_name']);
+
+        if ($value) {
+            $this->assertSame(($value * 1000) . '|ms', $metrics[$metricName]);
+        } else {
+            $this->assertRegExp('/[0-9]+|ms/', $metrics[$metricName]);
+        }
     }
 
     /**
      * @covers \ZF\Statsd\StatsdListener::addTimer()
+     * @dataProvider addTimerDataProvider
+     *
+     * @param string $metricName
+     * @param integer $value
      */
-    public function testAddTimer()
+    public function testAddTimer($metricName, $value)
     {
         $this->instance->resetMetrics();
-        $this->instance->addMemory('metric_name');
+        $this->instance->addMemory($metricName, $value);
 
         $metrics = $this->instance->getMetrics();
-        $this->assertRegExp('/[0-9]+|ms/', $metrics['metric_name']);
+        $this->assertSame(($value * 1000) . '|ms', $metrics[$metricName]);
     }
 
     /**
@@ -69,11 +132,60 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @covers \ZF\Statsd\StatsdListener::onEventEnd()
+     */
+    public function testOnEventEnd()
+    {
+        $this->markTestIncomplete();
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::onEventStart()
+     */
+    public function testOnEventStart()
+    {
+        $this->markTestIncomplete();
+    }
+
+    /**
      * @covers \ZF\Statsd\StatsdListener::onFinish()
      */
     public function testOnFinish()
     {
         $this->markTestIncomplete();
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::prepareMetricNames()
+     * @dataProvider prepareMetricNamesDataProvider
+     *
+     * @param MvcEvent $e
+     * @param string   $memoryConfig
+     * @param string   $timerConfig
+     * @param string   $exMemoryConfig
+     * @param string   $exTimerConfig
+     */
+    public function testPrepareMetricNames(MvcEvent $e, $memoryConfig, $timerConfig, $exMemoryConfig, $exTimerConfig)
+    {
+        foreach ($events as $event) {
+            list(
+                $memoryConfig,
+                $timerConfig
+             ) = $this->instance->prepareMetricNames($e);
+
+            $this->assertSame($exMemoryConfig, $memoryConfig);
+            $this->assertSame($exTimerConfig, $timerConfig);
+        }
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::resetEvents()
+     */
+    public function testResetEvents()
+    {
+        $this->instance->setEvents(array('foo' => 'bar'));
+        $this->instance->resetEvents();
+        $this->assertEmpty($this->instance->getEvents());
     }
 
     /**
@@ -100,7 +212,8 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         $this->instance->setConfig($config);
 
         $metrics = [
-            'metric_name' => 'metric_payload',
+            'metric_name1'  => 'metric_payload1',
+            'metric_name2' => 'metric_payload2',
         ];
         $this->instance->setMetrics($metrics);
 
@@ -126,10 +239,15 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         // Reads from UDP socket
         $from = '';
         $port = 0;
+
         socket_recvfrom($sock, $buf, 512, 0, $from, $port);
+        $this->assertSame($buf, 'metric_name1:metric_payload1');
+
+        socket_recvfrom($sock, $buf, 512, 0, $from, $port);
+        $this->assertSame($buf, 'metric_name2:metric_payload2');
+
         socket_close($sock);
 
-        $this->assertSame($buf, 'metric_name:metric_payload');
         $this->assertEmpty($this->instance->getMetrics());
     }
 }
@@ -156,9 +274,25 @@ class Wrapper extends StatsdListener
     /**
      * @return array
      */
+    public function getEvents()
+    {
+        return $this->events;
+    }
+
+    /**
+     * @return array
+     */
     public function getMetrics()
     {
         return $this->metrics;
+    }
+
+    /**
+     * @param array $events
+     */
+    public function setEvents(array $events)
+    {
+        $this->events = $events;
     }
 
     /**

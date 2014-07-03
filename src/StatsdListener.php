@@ -151,6 +151,9 @@ class StatsdListener extends AbstractListenerAggregate
             return;
         }
 
+        $this->events['total']['duration'] = (microtime(true) - $this->getRequestTime());
+        $this->events['total']['memory']   = memory_get_peak_usage();
+
         list(
             $memoryMetric,
             $timerMetric
@@ -158,14 +161,14 @@ class StatsdListener extends AbstractListenerAggregate
 
         $this->resetMetrics();
 
-        foreach ($this->events as $event) {
+        foreach ($this->events as $event => $data) {
+            $this->addMemory(str_replace('%mvc-event%', $event, $memoryMetric), $data['memory']);
+            $this->addTimer(str_replace('%mvc-event%', $event, $timerMetric), $data['duration']);
         }
 
         $this->resetEvents();
 
-        $this->addMemory($memoryMetric)
-            ->addTimer($timerMetric)
-            ->send();
+        $this->send();
     }
 
     /**
@@ -218,7 +221,7 @@ class StatsdListener extends AbstractListenerAggregate
         }
 
         $regex =  empty($this->config['replace_dots_in_tokens'])
-        ? '/[^a-z0-9]+/ui'
+            ? '/[^a-z0-9]+/ui'
             : '/[^a-z0-9.]+/ui';
 
         foreach ($tokens as &$v) {
@@ -260,19 +263,6 @@ class StatsdListener extends AbstractListenerAggregate
     }
 
     /**
-     * Sets config.
-     *
-     * @param  array $config
-     * @return self
-     */
-    public function setConfig(array $config)
-    {
-        $this->config = $config;
-
-        return $this;
-    }
-
-    /**
      * Sends the metrics over UDP
      *
      * @return self
@@ -296,6 +286,19 @@ class StatsdListener extends AbstractListenerAggregate
         } catch (\Exception $e) {
             // Ignores failures silently
         }
+
+        return $this;
+    }
+
+    /**
+     * Sets config.
+     *
+     * @param  array $config
+     * @return self
+     */
+    public function setConfig(array $config)
+    {
+        $this->config = $config;
 
         return $this;
     }
