@@ -1,8 +1,8 @@
 <?php
 namespace ZFTest\Statsd;
 
-use ZF\Statsd\StatsdListener;
 use Zend\Mvc\MvcEvent;
+use ZF\Statsd\StatsdListener;
 
 class StatsdListenerTest extends \PHPUnit_Framework_TestCase
 {
@@ -57,20 +57,49 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function prepareMetricNamesDataProvider()
     {
+        $request  = new \Zend\Http\Request();
+        $request->setMethod('POST')
+            ->getHeaders()
+            ->addHeaders(array('Content-type' => 'application/json'));
+
+        $response = new \Zend\Http\Response();
+        $response->setStatusCode(201)
+            ->getHeaders()
+            ->addHeaders(array('Content-type' => 'application/hal+json'));
+
+        $event    = new MvcEvent(MvcEvent::EVENT_FINISH);
+        $event->setRequest($request)
+            ->setResponse($response)
+            ->setRouteMatch(new \Zend\Mvc\Router\RouteMatch(array(
+                'controller' => 'controller-with.dot.And-dashes',
+            )));
+
+        $hostname = preg_replace('/[^a-z0-9.]+/ui', '-', strtolower(gethostname()));
+
         return array(
             array(
-                new MvcEvent('route'),
-                '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.memory',
-                '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.duration',
-                hostname() . '.',
-                hostname() . '.',
+                array(
+                    'memory_pattern'             => '%hostname%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.route.memory',
+                    'metric_tokens_callback'     => 'strtolower',
+                    'replace_dots_in_tokens'     => true,
+                    'replace_special_chars_with' => '-',
+                    'timer_pattern'              => '%hostname%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.route.duration',
+                ),
+                $event,
+                "$hostname.controller-with-dot-and-dashes.post.201.application-json.application-hal-json.route.memory",
+                "$hostname.controller-with-dot-and-dashes.post.201.application-json.application-hal-json.route.duration",
             ),
             array(
-                new MvcEvent(),
-                '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.memory',
-                '%hostname%.%module%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.duration',
-                hostname() . '.',
-                hostname() . '.',
+                array(
+                    'memory_pattern'             => '%controller%.%http-method%.%http-code%.ROUTE.memory',
+                    'metric_tokens_callback'     => 'strtoupper',
+                    'replace_dots_in_tokens'     => false,
+                    'replace_special_chars_with' => '-',
+                    'timer_pattern'              => '%controller%.%http-method%.%http-code%.ROUTE.duration',
+                ),
+                $event,
+                "CONTROLLER-WITH.DOT.AND-DASHES.POST.201.ROUTE.memory",
+                "CONTROLLER-WITH.DOT.AND-DASHES.POST.201.ROUTE.duration",
             ),
         );
     }
@@ -165,17 +194,19 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      * @param string   $exMemoryConfig
      * @param string   $exTimerConfig
      */
-    public function testPrepareMetricNames(MvcEvent $e, $memoryConfig, $timerConfig, $exMemoryConfig, $exTimerConfig)
+    public function testPrepareMetricNames(array $config, MvcEvent $e, $exMemoryConfig, $exTimerConfig)
     {
-        foreach ($events as $event) {
-            list(
-                $memoryConfig,
-                $timerConfig
-             ) = $this->instance->prepareMetricNames($e);
+        $this->instance
+            ->setConfig($config);
 
-            $this->assertSame($exMemoryConfig, $memoryConfig);
-            $this->assertSame($exTimerConfig, $timerConfig);
-        }
+        list(
+            $memoryConfig,
+            $timerConfig
+        ) = $this->instance
+            ->prepareMetricNames($e);
+
+        $this->assertSame($exMemoryConfig, $memoryConfig);
+        $this->assertSame($exTimerConfig, $timerConfig);
     }
 
     /**
@@ -212,7 +243,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         $this->instance->setConfig($config);
 
         $metrics = [
-            'metric_name1'  => 'metric_payload1',
+            'metric_name1' => 'metric_payload1',
             'metric_name2' => 'metric_payload2',
         ];
         $this->instance->setMetrics($metrics);

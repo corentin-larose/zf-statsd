@@ -162,6 +162,8 @@ class StatsdListener extends AbstractListenerAggregate
         $this->resetMetrics();
 
         foreach ($this->events as $event => $data) {
+            list($event) = $this->prepareTokens(array($event));
+
             $this->addMemory(str_replace('%mvc-event%', $event, $memoryMetric), $data['memory']);
             $this->addTimer(str_replace('%mvc-event%', $event, $timerMetric), $data['duration']);
         }
@@ -185,54 +187,53 @@ class StatsdListener extends AbstractListenerAggregate
         $tokens = array();
 
         if (
-            strpos($memoryConfig, '%controller%')
-            or strpos($timerConfig, '%controller%')
+            (false !== strpos($memoryConfig, '%hostname%'))
+            or (false !== strpos($timerConfig, '%hostname%'))
         ) {
-            $tokens['controller'] = $e->getRouteMatch()
-            ->getParam('controller');
+            $tokens['hostname'] = gethostname();
         }
 
         if (
-            strpos($memoryConfig, '%http-method%')
-            or strpos($timerConfig, '%http-method%')
+            (false !== strpos($memoryConfig, '%controller%'))
+            or (false !== strpos($timerConfig, '%controller%'))
+        ) {
+            $tokens['controller'] = $e->getRouteMatch()
+                ->getParam('controller');
+        }
+
+        if (
+            (false !== strpos($memoryConfig, '%http-method%'))
+            or (false !== strpos($timerConfig, '%http-method%'))
         ) {
             $tokens['http-method'] = $request->getMethod();
         }
 
         if (
-            strpos($memoryConfig, '%http-code%')
-            or strpos($timerConfig, '%http-code%')
+            (false !== strpos($memoryConfig, '%http-code%'))
+            or (false !== strpos($timerConfig, '%http-code%'))
         ) {
             $tokens['http-code'] = $response->getStatusCode();
         }
 
         if (
-            strpos($memoryConfig, '%request-content-type%')
-            or strpos($timerConfig, '%request-content-type%')
+            (false !== strpos($memoryConfig, '%request-content-type%'))
+            or (false !== strpos($timerConfig, '%request-content-type%'))
         ) {
-            $tokens['request-content-type'] = $request->getHeaders()->get('request-content-type')->getFieldValue();
+            $tokens['request-content-type'] = $request->getHeaders()
+                ->get('content-type')
+                ->getFieldValue();
         }
 
         if (
-            strpos($memoryConfig, '%response-content-type%')
-            or strpos($timerConfig, '%response-content-type%')
+            (false !== strpos($memoryConfig, '%response-content-type%'))
+            or (false !== strpos($timerConfig, '%response-content-type%'))
         ) {
-            $tokens['response-content-type'] = $response->getHeaders()->get('response-content-type')->getFieldValue();
+            $tokens['response-content-type'] = $response->getHeaders()
+                ->get('content-type')
+                ->getFieldValue();
         }
 
-        $regex =  empty($this->config['replace_dots_in_tokens'])
-            ? '/[^a-z0-9]+/ui'
-            : '/[^a-z0-9.]+/ui';
-
-        foreach ($tokens as &$v) {
-            $v = preg_replace('/[^a-z0-9]+/ui', $this->config['replace_special_chars_with'], $v);
-        }
-
-        if (is_callable($this->config['metric_tokens_callback'])) {
-            foreach ($tokens as &$v) {
-                $v = call_user_func($this->config['metric_tokens_callback'], $v);
-            }
-        }
+        $tokens = $this->prepareTokens($tokens);
 
         foreach ($tokens as $k => $v) {
             $memoryConfig = str_replace("%$k%", $v, $memoryConfig);
@@ -240,6 +241,29 @@ class StatsdListener extends AbstractListenerAggregate
         }
 
         return array($memoryConfig, $timerConfig);
+    }
+
+    /**
+     * @param array $tokens
+     * @return array
+     */
+    protected function prepareTokens($tokens)
+    {
+        $regex =  empty($this->config['replace_dots_in_tokens'])
+            ? '/[^a-z0-9.]+/ui'
+            : '/[^a-z0-9]+/ui';
+
+        foreach ($tokens as $k => &$token) {
+            $token = preg_replace($regex, $this->config['replace_special_chars_with'], $token);
+        }
+
+        if (is_callable($this->config['metric_tokens_callback'])) {
+            foreach ($tokens as $k => &$token) {
+                $token = call_user_func($this->config['metric_tokens_callback'], $token);
+            }
+        }
+
+        return $tokens;
     }
 
     /**
