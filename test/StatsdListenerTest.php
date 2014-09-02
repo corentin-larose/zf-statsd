@@ -58,9 +58,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     public function prepareMetricNamesDataProvider()
     {
         $request  = new \Zend\Http\Request();
-        $request->setMethod('POST')
-            ->getHeaders()
-            ->addHeaders(array('Content-type' => 'application/json'));
+        $request->setMethod('POST');
 
         $response = new \Zend\Http\Response();
         $response->setStatusCode(201)
@@ -79,11 +77,11 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         return array(
             array(
                 array(
-                    'memory_pattern'             => '%hostname%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.route.memory',
+                    'memory_pattern'             => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.route.memory',
                     'metric_tokens_callback'     => 'strtolower',
                     'replace_dots_in_tokens'     => true,
                     'replace_special_chars_with' => '-',
-                    'timer_pattern'              => '%hostname%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.route.duration',
+                    'timer_pattern'              => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.route.duration',
                 ),
                 $event,
                 "$hostname.controller-with-dot-and-dashes.post.201.application-json.application-hal-json.route.memory",

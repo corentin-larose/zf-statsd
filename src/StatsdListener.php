@@ -216,15 +216,6 @@ class StatsdListener extends AbstractListenerAggregate
         }
 
         if (
-            (false !== strpos($memoryConfig, '%request-content-type%'))
-            or (false !== strpos($timerConfig, '%request-content-type%'))
-        ) {
-            $tokens['request-content-type'] = $request->getHeaders()
-                ->get('content-type')
-                ->getFieldValue();
-        }
-
-        if (
             (false !== strpos($memoryConfig, '%response-content-type%'))
             or (false !== strpos($timerConfig, '%response-content-type%'))
         ) {

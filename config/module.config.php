@@ -13,10 +13,10 @@ return array(
         'enable' => true,
 
         // web-front-01.account.get.200.application-json.application-json-hal.route.memory
-        'memory_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.memory',
+        'memory_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.%mvc-event%.memory',
 
         // web-front-01.account.get.200.application-json.application-json-hal.route.duration
-        'timer_pattern'  => '%hostname%.%controller%.%http-method%.%http-code%.%request-content-type%.%response-content-type%.%mvc-event%.duration',
+        'timer_pattern'  => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.%mvc-event%.duration',
 
         // Metrics overriding
         'metric_tokens_callback'     => 'strtolower', // strtoupper, strtolower, ucwords, etc.
