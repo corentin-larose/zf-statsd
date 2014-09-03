@@ -30,8 +30,8 @@ class StatsdListener extends AbstractListenerAggregate
     protected $metrics = array();
 
     /**
-     * @param string $metricName
-     * @param string $value
+     * @param  string $metricName
+     * @param  string $value
      * @return self
      */
     protected function addMemory($metricName, $value = null)
@@ -52,7 +52,7 @@ class StatsdListener extends AbstractListenerAggregate
     }
 
     /**
-     * @param string $metricName
+     * @param  string $metricName
      * @return self
      */
     protected function addTimer($metricName, $time)
@@ -94,8 +94,8 @@ class StatsdListener extends AbstractListenerAggregate
     }
 
     /**
-     * @param integer $end
-     * @param integer $start
+     * @param  integer $end
+     * @param  integer $start
      * @return integer
      */
     protected function getTimeDiff($end, $start = null)
@@ -235,7 +235,7 @@ class StatsdListener extends AbstractListenerAggregate
     }
 
     /**
-     * @param array $tokens
+     * @param  array $tokens
      * @return array
      */
     protected function prepareTokens($tokens)

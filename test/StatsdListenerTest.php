@@ -111,7 +111,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      * @covers \ZF\Statsd\StatsdListener::addMemory()
      * @dataProvider addMemoryDataProvider
      *
-     * @param string $metricName
+     * @param string  $metricName
      * @param integer $value
      */
     public function testAddMemory($metricName, $value = null)
@@ -132,7 +132,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      * @covers \ZF\Statsd\StatsdListener::addTimer()
      * @dataProvider addTimerDataProvider
      *
-     * @param string $metricName
+     * @param string  $metricName
      * @param integer $value
      */
     public function testAddTimer($metricName, $value)
