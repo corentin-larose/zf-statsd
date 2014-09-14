@@ -113,8 +113,9 @@ class StatsdListener extends AbstractListenerAggregate
         $start = $this->events[$e->getName()]['start'];
         unset($this->events[$e->getName()]['start']);
 
-        $this->events[$e->getName()]['duration'] = (microtime(true) - $start);
-        $this->events[$e->getName()]['memory']   = memory_get_peak_usage();
+        $diff = microtime(true) - $start;
+        $this->setEvents($e->getName(), 'duration', $diff)
+            ->setEvents($e->getName(), 'memory', memory_get_peak_usage());
     }
 
     /**
@@ -123,12 +124,13 @@ class StatsdListener extends AbstractListenerAggregate
     public function onEventStart(MvcEvent $e)
     {
         // First event just follows boostrap.
-        if (empty($this->events['bootstrap'])) {
-            $this->events['bootstrap']['duration'] = (microtime(true) - $this->getRequestTime());
-            $this->events['bootstrap']['memory']   = memory_get_peak_usage();
+        if (empty($this->events[MvcEvent::EVENT_BOOTSTRAP])) {
+            $diff = microtime(true) - $this->getRequestTime();
+            $this->setEvents(MvcEvent::EVENT_BOOTSTRAP, 'duration', $diff)
+                ->setEvents(MvcEvent::EVENT_BOOTSTRAP, 'memory', memory_get_peak_usage());
         }
 
-        $this->events[$e->getName()]['start'] = microtime(true);
+        $this->setEvents($e->getName(), 'start', microtime(true));
     }
 
     /**
@@ -151,8 +153,9 @@ class StatsdListener extends AbstractListenerAggregate
             return;
         }
 
-        $this->events['total']['duration'] = (microtime(true) - $this->getRequestTime());
-        $this->events['total']['memory']   = memory_get_peak_usage();
+        $diff = microtime(true) - $this->getRequestTime();
+        $this->setEvents('total', 'duration', $diff)
+            ->setEvents('total', 'memory', memory_get_peak_usage());
 
         list(
             $memoryMetric,
@@ -314,6 +317,19 @@ class StatsdListener extends AbstractListenerAggregate
     public function setConfig(array $config)
     {
         $this->config = $config;
+
+        return $this;
+    }
+
+    /**
+     * @param  string $eventName
+     * @param  string $offset
+     * @param  mixed  $value
+     * @return self
+     */
+    protected function setEvents($eventName, $offset, $value)
+    {
+        $this->events[$eventName][$offset] = $value;
 
         return $this;
     }

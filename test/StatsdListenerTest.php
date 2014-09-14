@@ -7,7 +7,7 @@ use ZF\Statsd\StatsdListener;
 class StatsdListenerTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @var StatsdListener
+     * @var Wrapper
      */
     protected $instance;
 
@@ -226,10 +226,19 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     public function testAddTimer($metricName, $value)
     {
         $this->instance->resetMetrics();
-        $this->instance->addMemory($metricName, $value);
+        $this->instance->addTimer($metricName, $value);
 
         $metrics = $this->instance->getMetrics();
         $this->assertSame(($value * 1000) . '|ms', $metrics[$metricName]);
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::getRequestTime()
+     */
+    public function testGetRequestTime()
+    {
+        $requestTime = $this->instance->getRequestTime();
+        $this->assertInternalType('float', $requestTime);
     }
 
     /**
@@ -265,7 +274,16 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testOnEventEnd()
     {
-        $this->markTestIncomplete();
+        $event = new MvcEvent(MvcEvent::EVENT_FINISH);
+
+        $this->instance->setEvents(MvcEvent::EVENT_FINISH, 'start', microtime(true));
+        $this->instance->onEventEnd($event);
+        $events = $this->instance->getEvents();
+
+        $this->assertArrayHasKey('duration', $events[MvcEvent::EVENT_FINISH]);
+        $this->assertInternalType('float', $events[MvcEvent::EVENT_FINISH]['duration']);
+        $this->assertArrayHasKey('memory', $events[MvcEvent::EVENT_FINISH]);
+        $this->assertInternalType('integer', $events[MvcEvent::EVENT_FINISH]['memory']);
     }
 
     /**
@@ -273,7 +291,17 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testOnEventStart()
     {
-        $this->markTestIncomplete();
+        $event = new MvcEvent(MvcEvent::EVENT_ROUTE);
+
+        $this->instance->onEventStart($event);
+        $events = $this->instance->getEvents();
+
+        $this->assertArrayHasKey('duration', $events[MvcEvent::EVENT_BOOTSTRAP]);
+        $this->assertInternalType('float', $events[MvcEvent::EVENT_BOOTSTRAP]['duration']);
+        $this->assertArrayHasKey('memory', $events[MvcEvent::EVENT_BOOTSTRAP]);
+        $this->assertInternalType('integer', $events[MvcEvent::EVENT_BOOTSTRAP]['memory']);
+        $this->assertArrayHasKey('start', $events[MvcEvent::EVENT_ROUTE]);
+        $this->assertInternalType('float', $events[MvcEvent::EVENT_ROUTE]['start']);
     }
 
     /**
@@ -331,7 +359,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testResetEvents()
     {
-        $this->instance->setEvents(array('foo' => 'bar'));
+        $this->instance->setEvents(MvcEvent::EVENT_FINISH, 'start', microtime(true));
         $this->instance->resetEvents();
         $this->assertEmpty($this->instance->getEvents());
     }
@@ -398,6 +426,25 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEmpty($this->instance->getMetrics());
     }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::setConfig()
+     */
+    public function testSetConfig()
+    {
+        $config = ['foo' => 'bar'];
+        $this->instance->setConfig($config);
+        $this->assertSame($config, $this->instance->getConfig());
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::setEvents()
+     */
+    public function testSetEvents()
+    {
+        $this->instance->setEvents(MvcEvent::EVENT_FINISH, 'start', 1234);
+        $this->assertSame([MvcEvent::EVENT_FINISH => ['start' => 1234]], $this->instance->getEvents());
+    }
 }
 
 class Wrapper extends StatsdListener
@@ -433,14 +480,6 @@ class Wrapper extends StatsdListener
     public function getMetrics()
     {
         return $this->metrics;
-    }
-
-    /**
-     * @param array $events
-     */
-    public function setEvents(array $events)
-    {
-        $this->events = $events;
     }
 
     /**
