@@ -36,6 +36,18 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @see testGetTimeDiff
+     * @return array
+     */
+    public function getTimeDiffDataProvider()
+    {
+        return array(
+            array(microtime(true), microtime(true) - 1),
+            array(microtime(true)),
+        );
+    }
+
+    /**
      * @see testMethodsReturnSelf
      * @return array
      */
@@ -84,8 +96,56 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
                     'timer_pattern'              => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.route.duration',
                 ),
                 $event,
-                "$hostname.controller-with-dot-and-dashes.post.201.application-json.application-hal-json.route.memory",
-                "$hostname.controller-with-dot-and-dashes.post.201.application-json.application-hal-json.route.duration",
+                "$hostname.controller-with-dot-and-dashes.post.201.application-hal-json.route.memory",
+                "$hostname.controller-with-dot-and-dashes.post.201.application-hal-json.route.duration",
+            ),
+            array(
+                array(
+                    'memory_pattern'             => '%controller%.%http-method%.%http-code%.%response-content-type%.route.memory',
+                    'metric_tokens_callback'     => 'strtolower',
+                    'replace_dots_in_tokens'     => true,
+                    'replace_special_chars_with' => '-',
+                    'timer_pattern'              => '%controller%.%http-method%.%http-code%.%response-content-type%.route.duration',
+                ),
+                $event,
+                "controller-with-dot-and-dashes.post.201.application-hal-json.route.memory",
+                "controller-with-dot-and-dashes.post.201.application-hal-json.route.duration",
+            ),
+            array(
+                array(
+                    'memory_pattern'             => '%hostname%.%http-method%.%http-code%.%response-content-type%.route.memory',
+                    'metric_tokens_callback'     => 'strtolower',
+                    'replace_dots_in_tokens'     => true,
+                    'replace_special_chars_with' => '-',
+                    'timer_pattern'              => '%hostname%.%http-method%.%http-code%.%response-content-type%.route.duration',
+                ),
+                $event,
+                "$hostname.post.201.application-hal-json.route.memory",
+                "$hostname.post.201.application-hal-json.route.duration",
+            ),
+            array(
+                array(
+                    'memory_pattern'             => '%hostname%.%controller%.%http-code%.%response-content-type%.route.memory',
+                    'metric_tokens_callback'     => 'strtolower',
+                    'replace_dots_in_tokens'     => true,
+                    'replace_special_chars_with' => '-',
+                    'timer_pattern'              => '%hostname%.%controller%.%http-code%.%response-content-type%.route.duration',
+                ),
+                $event,
+                "$hostname.controller-with-dot-and-dashes.201.application-hal-json.route.memory",
+                "$hostname.controller-with-dot-and-dashes.201.application-hal-json.route.duration",
+            ),
+            array(
+                array(
+                    'memory_pattern'             => '%hostname%.%controller%.%http-method%.%response-content-type%.route.memory',
+                    'metric_tokens_callback'     => 'strtolower',
+                    'replace_dots_in_tokens'     => true,
+                    'replace_special_chars_with' => '-',
+                    'timer_pattern'              => '%hostname%.%controller%.%http-method%.%response-content-type%.route.duration',
+                ),
+                $event,
+                "$hostname.controller-with-dot-and-dashes.post.application-hal-json.route.memory",
+                "$hostname.controller-with-dot-and-dashes.post.application-hal-json.route.duration",
             ),
             array(
                 array(
@@ -98,6 +158,34 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
                 $event,
                 "CONTROLLER-WITH.DOT.AND-DASHES.POST.201.ROUTE.memory",
                 "CONTROLLER-WITH.DOT.AND-DASHES.POST.201.ROUTE.duration",
+            ),
+        );
+    }
+
+    /**
+     * @see testPrepareTokens
+     * @return array
+     */
+    public function prepareTokensDataProvider()
+    {
+        return array(
+            array(
+                array(
+                    'metric_tokens_callback'     => 'strtolower',
+                    'replace_dots_in_tokens'     => true,
+                    'replace_special_chars_with' => '-',
+                ),
+                array('controller.with-dot-and-DASHES'),
+                array('controller-with-dot-and-dashes'),
+            ),
+            array(
+                array(
+                    'metric_tokens_callback'     => 'strtoupper',
+                    'replace_dots_in_tokens'     => false,
+                    'replace_special_chars_with' => '-',
+                ),
+                array('controller.with-dot-and-DASHES'),
+                array('CONTROLLER.WITH-DOT-AND-DASHES'),
             ),
         );
     }
@@ -142,6 +230,20 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
 
         $metrics = $this->instance->getMetrics();
         $this->assertSame(($value * 1000) . '|ms', $metrics[$metricName]);
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::getTimeDiff()
+     * @dataProvider getTimeDiffDataProvider
+     *
+     * @param integer $end
+     * @param integer $start
+     * @param integer $exDiff
+     */
+    public function testGetTimeDiff($end, $start = null)
+    {
+        $diff = $this->instance->getTimeDiff($end, $start);
+        $this->assertInternalType('float', $diff);
     }
 
     /**
@@ -205,6 +307,23 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
 
         $this->assertSame($exMemoryConfig, $memoryConfig);
         $this->assertSame($exTimerConfig, $timerConfig);
+    }
+
+    /**
+     * @covers \ZF\Statsd\StatsdListener::prepareTokens()
+     * @dataProvider prepareTokensDataProvider
+     *
+     * @param string $expectedTokens
+     */
+    public function testPrepareTokens(array $config, array $tokens, array $expectedTokens)
+    {
+        $this->instance
+            ->setConfig($config);
+
+        $actualTokens = $this->instance
+            ->prepareTokens($tokens);
+
+        $this->assertSame($expectedTokens, $actualTokens);
     }
 
     /**

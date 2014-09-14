@@ -238,7 +238,7 @@ class StatsdListener extends AbstractListenerAggregate
      * @param  array $tokens
      * @return array
      */
-    protected function prepareTokens($tokens)
+    protected function prepareTokens(array $tokens)
     {
         $regex =  empty($this->config['replace_dots_in_tokens'])
             ? '/[^a-z0-9.]+/ui'
