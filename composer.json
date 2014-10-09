@@ -9,7 +9,6 @@
         ]
     },
     "config": {
-        "bin-dir": "bin",
         "process-timeout" : 3600
     }, 
     "description": "ZF2 Module providing API monitoring/profiling support with StatsD",
@@ -28,6 +27,7 @@
         "zendframework/zend-mvc": "~2.3"
     },
     "require-dev": {
+        "fabpot/php-cs-fixer": "*@dev",
         "phpunit/phpunit": "4.1.*"
     },
     "type": "library"
