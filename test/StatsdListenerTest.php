@@ -210,7 +210,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         $metrics = $this->instance->getMetrics();
 
         if ($value) {
-            $this->assertSame(($value * 1000) . '|ms', $metrics[$metricName]);
+            $this->assertSame(($value * 1000).'|ms', $metrics[$metricName]);
         } else {
             $this->assertRegExp('/[0-9]+|ms/', $metrics[$metricName]);
         }
@@ -229,7 +229,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         $this->instance->addTimer($metricName, $value);
 
         $metrics = $this->instance->getMetrics();
-        $this->assertSame(($value * 1000) . '|ms', $metrics[$metricName]);
+        $this->assertSame(($value * 1000).'|ms', $metrics[$metricName]);
     }
 
     /**

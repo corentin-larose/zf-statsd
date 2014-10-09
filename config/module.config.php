@@ -3,7 +3,7 @@ return array(
     'service_manager' => array(
         'factories' => array(
             'ZF\Statsd\StatsdListener' => 'ZF\Statsd\StatsdListenerFactory',
-        )
+        ),
     ),
 
     'zf-statsd' => array(

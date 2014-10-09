@@ -291,7 +291,9 @@ class StatsdListener extends AbstractListenerAggregate
             if (! empty($this->metrics)) {
                 $fp = fsockopen("udp://{$this->config['statsd']['host']}", $this->config['statsd']['port']);
 
-                if (! $fp) { return; }
+                if (! $fp) {
+                    return;
+                }
 
                 foreach ($this->metrics as $stat => $value) {
                     fwrite($fp, "$stat:$value");
