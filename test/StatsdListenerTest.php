@@ -387,10 +387,10 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         );
         $this->instance->setConfig($config);
 
-        $metrics = [
+        $metrics = array(
             'metric_name1' => 'metric_payload1',
             'metric_name2' => 'metric_payload2',
-        ];
+        );
         $this->instance->setMetrics($metrics);
 
         // Creates a UDP socket
@@ -432,7 +432,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testSetConfig()
     {
-        $config = ['foo' => 'bar'];
+        $config = array('foo' => 'bar');
         $this->instance->setConfig($config);
         $this->assertSame($config, $this->instance->getConfig());
     }
@@ -443,7 +443,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     public function testSetEvents()
     {
         $this->instance->setEvents(MvcEvent::EVENT_FINISH, 'start', 1234);
-        $this->assertSame([MvcEvent::EVENT_FINISH => ['start' => 1234]], $this->instance->getEvents());
+        $this->assertSame(array(MvcEvent::EVENT_FINISH => array('start' => 1234)), $this->instance->getEvents());
     }
 }
 
@@ -455,7 +455,7 @@ class Wrapper extends StatsdListener
             throw new \LogicException("Unknown method '$method'");
         }
 
-        return call_user_func_array([$this, $method], $args);
+        return call_user_func_array(array($this, $method), $args);
     }
 
     /**
