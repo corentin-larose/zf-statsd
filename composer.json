@@ -9,6 +9,7 @@
         ]
     },
     "config": {
+        "bin-dir" : "vendor/bin",
         "process-timeout" : 3600
     }, 
     "description": "ZF2 Module providing API monitoring/profiling support with StatsD",
@@ -16,7 +17,7 @@
         "zf2",
         "zend",
         "module",
-        "cache"
+        "statsd"
     ],
     "license": "BSD-3-Clause",
     "name": "corentin-larose/zf-statsd",    
