@@ -4,10 +4,10 @@ namespace ZFTest\Statsd;
 use Zend\Mvc\MvcEvent;
 use ZF\Statsd\StatsdListener;
 
-class StatsdListenerTest extends \PHPUnit_Framework_TestCase
+class StatsdListenerTest extends AbstractTestCase
 {
     /**
-     * @var Wrapper
+     * @var StatsdListener
      */
     protected $instance;
 
@@ -54,12 +54,12 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     public function methodsReturnSelfDataProvider()
     {
         return array(
-            array('addMemory', array('')),
-            array('addTimer', array('', 1000)),
-            array('resetEvents', array()),
-            array('resetMetrics', array()),
-            array('send', array()),
-            array('setConfig', array(array())),
+            array('addMemory', array(''), true),
+            array('addTimer', array('', 1000), true),
+            array('resetEvents', array(), true),
+            array('resetMetrics', array(), true),
+            array('send', array(), true),
+            array('setConfig', array(array()), true),
         );
     }
 
@@ -192,7 +192,9 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->instance = new Wrapper();
+        $this->instance = new StatsdListener();
+
+        parent::setup();
     }
 
     /**
@@ -204,10 +206,10 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testAddMemory($metricName, $value = null)
     {
-        $this->instance->resetMetrics();
-        $this->instance->addMemory($metricName, $value);
+        $this->getMethod('resetMetrics')->invoke($this->instance);
+        $this->getMethod('addMemory')->invoke($this->instance, $metricName, $value);
 
-        $metrics = $this->instance->getMetrics();
+        $metrics = $this->getProperty('metrics');
 
         if ($value) {
             $this->assertSame(($value * 1000).'|ms', $metrics[$metricName]);
@@ -225,10 +227,10 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testAddTimer($metricName, $value)
     {
-        $this->instance->resetMetrics();
-        $this->instance->addTimer($metricName, $value);
+        $this->getMethod('resetMetrics')->invoke($this->instance);
+        $this->getMethod('addTimer')->invoke($this->instance, $metricName, $value);
 
-        $metrics = $this->instance->getMetrics();
+        $metrics = $this->getProperty('metrics');
         $this->assertSame(($value * 1000).'|ms', $metrics[$metricName]);
     }
 
@@ -241,7 +243,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
             $this->setExpectedException('\LogicException');
         }
 
-        $requestTime = $this->instance->getRequestTime();
+        $requestTime = $this->getMethod('getRequestTime')->invoke($this->instance);
         $this->assertInternalType('float', $requestTime);
     }
 
@@ -259,7 +261,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
             $this->setExpectedException('\LogicException');
         }
 
-        $diff = $this->instance->getTimeDiff($end, $start);
+        $diff = $this->getMethod('getTimeDiff')->invoke($this->instance, $end, $start);
         $this->assertInternalType('float', $diff);
     }
 
@@ -270,9 +272,13 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      * @param string $method
      * @param array  $args
      */
-    public function testMethodsReturnSelf($method, $args)
+    public function testMethodsReturnSelf($method, $args, $protected)
     {
-        $ret = call_user_func_array(array($this->instance, $method), $args);
+        if ($protected) {
+            $ret = $this->getMethod($method)->invokeArgs($this->instance, $args);
+        } else {
+            $ret = call_user_func_array(array($this->instance, $method), $args);
+        }
 
         $this->assertInstanceOf('\ZF\Statsd\StatsdListener', $ret);
     }
@@ -284,9 +290,9 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     {
         $event = new MvcEvent(MvcEvent::EVENT_FINISH);
 
-        $this->instance->setEvents(MvcEvent::EVENT_FINISH, 'start', microtime(true));
+        $metrics = $this->getMethod('setEvents')->invoke($this->instance, MvcEvent::EVENT_FINISH, 'start', microtime(true));
         $this->instance->onEventEnd($event);
-        $events = $this->instance->getEvents();
+        $events = $this->getProperty('events');
 
         $this->assertArrayHasKey('duration', $events[MvcEvent::EVENT_FINISH]);
         $this->assertInternalType('float', $events[MvcEvent::EVENT_FINISH]['duration']);
@@ -306,7 +312,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         $event = new MvcEvent(MvcEvent::EVENT_ROUTE);
 
         $this->instance->onEventStart($event);
-        $events = $this->instance->getEvents();
+        $events = $this->getProperty('events');
 
         $this->assertArrayHasKey('duration', $events[MvcEvent::EVENT_BOOTSTRAP]);
         $this->assertInternalType('float', $events[MvcEvent::EVENT_BOOTSTRAP]['duration']);
@@ -342,8 +348,8 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         list(
             $memoryConfig,
             $timerConfig
-        ) = $this->instance
-            ->prepareMetricNames($e);
+        ) = $this->getMethod('prepareMetricNames')
+                ->invoke($this->instance, $e);
 
         $this->assertSame($exMemoryConfig, $memoryConfig);
         $this->assertSame($exTimerConfig, $timerConfig);
@@ -360,8 +366,8 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
         $this->instance
             ->setConfig($config);
 
-        $actualTokens = $this->instance
-            ->prepareTokens($tokens);
+        $actualTokens = $this->getMethod('prepareTokens')
+                ->invoke($this->instance, $tokens);
 
         $this->assertSame($expectedTokens, $actualTokens);
     }
@@ -371,9 +377,12 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testResetEvents()
     {
-        $this->instance->setEvents(MvcEvent::EVENT_FINISH, 'start', microtime(true));
-        $this->instance->resetEvents();
-        $this->assertEmpty($this->instance->getEvents());
+        $this->getMethod('setEvents')
+            ->invoke($this->instance, MvcEvent::EVENT_FINISH, 'start', microtime(true));
+
+        $this->getMethod('resetEvents')
+            ->invoke($this->instance);
+        $this->assertEmpty($this->getProperty('events'));
     }
 
     /**
@@ -381,9 +390,9 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testResetMetrics()
     {
-        $this->instance->setMetrics(array('foo' => 'bar'));
-        $this->instance->resetMetrics();
-        $this->assertEmpty($this->instance->getMetrics());
+        $this->setProperty('metrics', array('foo' => 'bar'));
+        $this->getMethod('resetMetrics')->invoke($this->instance);
+        $this->assertEmpty($this->getproperty('metrics'));
     }
 
     /**
@@ -403,7 +412,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
             'metric_name1' => 'metric_payload1',
             'metric_name2' => 'metric_payload2',
         );
-        $this->instance->setMetrics($metrics);
+        $this->setProperty('metrics', $metrics);
 
         // Creates a UDP socket
         if (! ($sock = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP))) {
@@ -421,8 +430,8 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
             $this->fail("Could not bind socket: [$errorcode] $errormsg");
         }
 
-        $this->assertSame($metrics, $this->instance->getMetrics());
-        $this->instance->send();
+        $this->assertSame($metrics, $this->getProperty('metrics'));
+        $this->getMethod('send')->invoke($this->instance);
 
         // Reads from UDP socket
         $from = '';
@@ -436,7 +445,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
 
         socket_close($sock);
 
-        $this->assertEmpty($this->instance->getMetrics());
+        $this->assertEmpty($this->getProperty('metrics'));
     }
 
     /**
@@ -446,7 +455,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
     {
         $config = array('foo' => 'bar');
         $this->instance->setConfig($config);
-        $this->assertSame($config, $this->instance->getConfig());
+        $this->assertSame($config, $this->getProperty('config'));
     }
 
     /**
@@ -454,59 +463,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testSetEvents()
     {
-        $this->instance->setEvents(MvcEvent::EVENT_FINISH, 'start', 1234);
-        $this->assertSame(array(MvcEvent::EVENT_FINISH => array('start' => 1234)), $this->instance->getEvents());
-    }
-}
-
-class Wrapper extends StatsdListener
-{
-    public function __call($method, $args)
-    {
-        if (! method_exists($this, $method)) {
-            throw new \LogicException("Unknown method '$method'");
-        }
-
-        return call_user_func_array(array($this, $method), $args);
-    }
-
-    /**
-     * @return array
-     */
-    public function getConfig()
-    {
-        return $this->config;
-    }
-
-    /**
-     * @return array
-     */
-    public function getEvents()
-    {
-        return $this->events;
-    }
-
-    /**
-     * @return array
-     */
-    public function getMetrics()
-    {
-        return $this->metrics;
-    }
-
-    /**
-     * @param array $metrics
-     */
-    public function setMetrics(array $metrics)
-    {
-        $this->metrics = $metrics;
-    }
-
-    /**
-     * @param array $eventConfig
-     */
-    public function setEventConfig(array $eventConfig)
-    {
-        $this->eventConfig = $eventConfig;
+        $this->getMethod('setEvents')->invoke($this->instance, MvcEvent::EVENT_FINISH, 'start', 1234);
+        $this->assertSame(array(MvcEvent::EVENT_FINISH => array('start' => 1234)), $this->getProperty('events'));
     }
 }
