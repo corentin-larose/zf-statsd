@@ -191,4 +191,4 @@ ZF2 Events
 
 #### `ZF\Statsd\StatsdListener`
 
-This listener is attached to the `MvcEvent::EVENT_FINISH` event with the very low priority of `-10000`.
+This listener is attached twice on each `Zend\Mvc\Application` event, once with the very low priority of `-10000` to collect metrics before event propagation, once with the very high priority of `10000` to collect metrics after event propagation.
