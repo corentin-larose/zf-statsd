@@ -53,83 +53,92 @@ The top-level configuration key for user configuration of this module is `zf-sta
 
 The `config/module.config.php` file contains a self-explanative example of configuration.
 
-#### Key: `controllers`
+#### Key: `enable`
 
-The `controllers` key is utilized for mapping a combination of a route, a HTTP method, a HTTP code and a Content-type (see below) to a monitoring/profiling configuration.
+The `enable` key is utilized for enabling/disabling the statsd module at run time.
+If you no longer need this module, rather consider removing the module from the `application.config.php` list.
 
 Example:
 
 ```php
-// See the `config/application.config.php` for a complete commented example
-'zf-statsd' => array(
+'zf-http-cache' => array(
     /* ... */
-    'controllers' => array(
-        '<controller>' => array(
-            '<http-method>'  => array(
-                '<http-code>'  => array(
-                    '<http-content-type>'  => array(
-                        'counter'          => true,
-                        'ram_gauge'        => true,
-                        'sample_rate'      => 1,
-                        'timer'            => true,
-                    ),
-                ),
-            ),
-        ),
-    ),
+    'enable' => true, // Cache module is enabled.
     /* ... */
 ),    
 ```
 
-##### Key: `<controller>` 
+#### Key: `memory_pattern`
 
-Either a controller name (as returned by `Zend\Mvc\MvcEvent::getRouteMatch()->getParam('controller')`, case-sensitive) or a wildcard.
-A wildcard stands for all the non-specified controllers.
-
-##### Key: `<http-method>` 
-
-Either a lower cased HTTP method (`get`, `post`, etc.) (as returned by `Zend\Http\Request::getMethod()`) or a wildcard.
-A wildcard stands for all the non-specified HTTP methods.
-
-##### Key: `<http-code>` 
-
-Either a HTTP status code (`200`, `404`, etc.) (as returned by `Zend\Http\Response::getStatusCode()`) or a wildcard.
-A wildcard stands for all the non-specified HTTP status codes.
-
-##### Key: `<http-content-type>` 
-
-Either a HTTP header Content-type value (`application/json`, etc.) (as returned by `Zend\Http\Header\ContentType::getFieldValue()`) or a wildcard.
-A wildcard stands for all the non-specified content types.
-
-##### Key: `counter` 
-
-##### Key: `ram_gauge` 
-
-##### Key: `sample_rate` 
-
-##### Key: `timer` 
-
-#### Key: `counter_suffix`
-
-#### Key: `gauge_suffix`
-
-#### Key: `timer_suffix`
-
-#### Key: `override_case_callback`
-
-Callback used to override the case of the metric names.
+The `memory_pattern` key is utilized to configure the metric name pattern for the memory related data.
+All token surrounded by `%` will be replaced with the corresponding value (see the available token list below).
+You can remove, add and sort tokens at your will.
 
 Example:
 
 ```php
 'zf-statsd' => array(
     /* ... */
-    'override_case_callback' => 'strtolower',
+    'memory_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.%mvc-event%.memory',
     /* ... */
 ),    
 ```
 
-#### Key: `replace_dots`
+#### Key: `timer_pattern`
+
+The `timer_pattern` key is utilized to configure the metric name pattern for the time related data.
+All token surrounded by `%` will be replaced with the corresponding value (see the available token list below).
+You can remove, add and sort tokens at your will.
+
+Example:
+
+```php
+'zf-statsd' => array(
+    /* ... */
+    'timer_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.%mvc-event%.duration',
+    /* ... */
+),    
+```
+
+##### Token: `%hostname%`
+
+Will be replaced with the value returned by ```hostname()``` function.
+
+##### Token: `%controller%`
+
+Will be replaced with the value returned by ```Zend\Mvc\MvcEvent::getRouteMatch()->getParam('controller')``` method.
+
+##### Token: `%http-method%`
+
+Will be replaced with the value returned by ```Zend\Http\Request::getMethod()``` method.
+
+##### Token: `%http-code%`
+
+Will be replaced with the value returned by ```Zend\Http\Response::getStatusCode()``` method.
+
+##### Token: `%response-content-type%`
+
+Will be replaced with the value returned by ```Zend\Http\Response::getHeaders()->get('content-type')->getFieldValue()``` method.
+
+##### Token: `%mvc-event%`
+
+Will be replaced with the value returned by ```Zend\Mvc\MvcEvent::getName()``` method.
+
+#### Key: `metric_tokens_callback`
+
+Callback used to override the case of the metric names, must be a valid PHP callback.
+
+Example:
+
+```php
+'zf-statsd' => array(
+    /* ... */
+    'metric_tokens_callback' => 'strtolower',
+    /* ... */
+),    
+```
+
+#### Key: `replace_dots_in_tokens`
 
 Whether to override a `.` found in a string used in the metric name.
 If true, `.` will be replaced with `replace_special_chars_with`.
@@ -139,7 +148,7 @@ Example:
 ```php
 'zf-statsd' => array(
     /* ... */
-    'replace_dots' => true,
+    'replace_dots_in_tokens' => true,
     /* ... */
 ),    
 ```
