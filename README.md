@@ -141,7 +141,7 @@ Example:
 #### Key: `replace_dots_in_tokens`
 
 Whether to override a `.` found in a string used in the metric name.
-If true, `.` will be replaced with `replace_special_chars_with`.
+If true, `.` will be replaced with the value of the `replace_special_chars_with` key.
 
 Example:
 
