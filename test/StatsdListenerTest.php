@@ -255,7 +255,7 @@ class StatsdListenerTest extends \PHPUnit_Framework_TestCase
      */
     public function testGetTimeDiff($end, $start = null)
     {
-        if (version_compare('5.4.0', PHP_VERSION) >= 0) {
+        if (! $start and version_compare('5.4.0', PHP_VERSION) >= 0) {
             $this->setExpectedException('\LogicException');
         }
 
