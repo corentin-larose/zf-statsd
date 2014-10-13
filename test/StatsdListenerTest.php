@@ -327,7 +327,15 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function testOnFinish()
     {
-        $this->markTestIncomplete();
+        if (version_compare('5.4.0', PHP_VERSION) >= 0) {
+            $this->setExpectedException('\LogicException');
+        }
+
+        $event = new MvcEvent(MvcEvent::EVENT_FINISH);
+
+        $this->instance->onFinish($event);
+
+        $this->assertEmpty($this->getProperty('events'));
     }
 
     /**
