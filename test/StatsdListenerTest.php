@@ -357,7 +357,7 @@ class StatsdListenerTest extends AbstractTestCase
             $memoryConfig,
             $timerConfig
         ) = $this->getMethod('prepareMetricNames')
-                ->invoke($this->instance, $e);
+            ->invoke($this->instance, $e);
 
         $this->assertSame($exMemoryConfig, $memoryConfig);
         $this->assertSame($exTimerConfig, $timerConfig);
@@ -375,7 +375,7 @@ class StatsdListenerTest extends AbstractTestCase
             ->setConfig($config);
 
         $actualTokens = $this->getMethod('prepareTokens')
-                ->invoke($this->instance, $tokens);
+            ->invoke($this->instance, $tokens);
 
         $this->assertSame($expectedTokens, $actualTokens);
     }
