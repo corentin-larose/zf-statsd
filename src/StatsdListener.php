@@ -105,10 +105,7 @@ class StatsdListener extends AbstractListenerAggregate
         return (microtime(true) - $start);
     }
 
-    /**
-     * @param MvcEvent $e
-     */
-    public function onEventEnd(MvcEvent $e)
+    public function onEventEnd($e)
     {
         $start = $this->events[$e->getName()]['start'];
         unset($this->events[$e->getName()]['start']);
@@ -118,10 +115,7 @@ class StatsdListener extends AbstractListenerAggregate
             ->setEvents($e->getName(), 'memory', memory_get_peak_usage());
     }
 
-    /**
-     * @param MvcEvent $e
-     */
-    public function onEventStart(MvcEvent $e)
+    public function onEventStart($e)
     {
         // First event just follows boostrap.
         if (empty($this->events[MvcEvent::EVENT_BOOTSTRAP])) {
@@ -133,10 +127,7 @@ class StatsdListener extends AbstractListenerAggregate
         $this->setEvents($e->getName(), 'start', microtime(true));
     }
 
-    /**
-     * @param MvcEvent $e
-     */
-    public function onFinish(MvcEvent $e)
+    public function onFinish($e)
     {
         if (empty($this->config['enable'])) {
             return;
