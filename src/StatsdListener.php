@@ -1,6 +1,7 @@
 <?php
 namespace ZF\Statsd;
 
+use Zend\EventManager\EventInterface;
 use Zend\EventManager\EventManagerInterface;
 use Zend\EventManager\AbstractListenerAggregate;
 use Zend\Http\Request as HttpRequest;
@@ -105,7 +106,7 @@ class StatsdListener extends AbstractListenerAggregate
         return (microtime(true) - $start);
     }
 
-    public function onEventEnd($e)
+    public function onEventEnd(EventInterface $e)
     {
         $start = $this->events[$e->getName()]['start'];
         unset($this->events[$e->getName()]['start']);
@@ -115,7 +116,7 @@ class StatsdListener extends AbstractListenerAggregate
             ->setEvents($e->getName(), 'memory', memory_get_peak_usage());
     }
 
-    public function onEventStart($e)
+    public function onEventStart(EventInterface $e)
     {
         // First event just follows boostrap.
         if (empty($this->events[MvcEvent::EVENT_BOOTSTRAP])) {
@@ -127,7 +128,7 @@ class StatsdListener extends AbstractListenerAggregate
         $this->setEvents($e->getName(), 'start', microtime(true));
     }
 
-    public function onFinish($e)
+    public function onFinish(EventInterface $e)
     {
         if (empty($this->config['enable'])) {
             return;
