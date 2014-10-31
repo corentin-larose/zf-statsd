@@ -216,9 +216,13 @@ class StatsdListener extends AbstractListenerAggregate
             (false !== strpos($memoryConfig, '%response-content-type%'))
             or (false !== strpos($timerConfig, '%response-content-type%'))
         ) {
-            $tokens['response-content-type'] = $response->getHeaders()
-                ->get('content-type')
-                ->getFieldValue();
+            $headers = $response->getHeaders();
+            if ($headers->has('content-type')) {
+                $tokens['response-content-type'] = $headers->get('content-type')
+                    ->getFieldValue();
+            } else {
+                $tokens['response-content-type'] = 'no-content-type';
+            }
         }
 
         $tokens = $this->prepareTokens($tokens);
