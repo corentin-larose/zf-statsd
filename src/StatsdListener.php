@@ -157,10 +157,12 @@ class StatsdListener extends AbstractListenerAggregate
         $this->resetMetrics();
 
         foreach ($this->events as $event => $data) {
-            list($event) = $this->prepareTokens(array($event));
+            if (isset($data['duration']) and isset($data['memory'])) {
+                list($event) = $this->prepareTokens(array($event));
 
-            $this->addMemory(str_replace('%mvc-event%', $event, $memoryMetric), $data['memory']);
-            $this->addTimer(str_replace('%mvc-event%', $event, $timerMetric), $data['duration']);
+                $this->addMemory(str_replace('%mvc-event%', $event, $memoryMetric), $data['memory']);
+                $this->addTimer(str_replace('%mvc-event%', $event, $timerMetric), $data['duration']);
+            }
         }
 
         $this->resetEvents();
