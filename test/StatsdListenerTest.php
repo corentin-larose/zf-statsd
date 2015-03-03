@@ -239,7 +239,7 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function testGetRequestTime()
     {
-        if (version_compare('5.4.0', PHP_VERSION) >= 0) {
+        if (version_compare(PHP_VERSION, '5.4.0') < 0) {
             $this->setExpectedException('\LogicException');
         }
 
@@ -257,7 +257,7 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function testGetTimeDiff($end, $start = null)
     {
-        if (! $start and version_compare('5.4.0', PHP_VERSION) >= 0) {
+        if (! $start and version_compare(PHP_VERSION, '5.4.0') < 0) {
             $this->setExpectedException('\LogicException');
         }
 
@@ -305,7 +305,7 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function testOnEventStart()
     {
-        if (version_compare('5.4.0', PHP_VERSION) >= 0) {
+        if (version_compare(PHP_VERSION, '5.4.0') < 0) {
             $this->setExpectedException('\LogicException');
         }
 
@@ -327,7 +327,7 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function testOnFinish()
     {
-        if (version_compare('5.4.0', PHP_VERSION) >= 0) {
+        if (version_compare(PHP_VERSION, '5.4.0') < 0) {
             $this->setExpectedException('\LogicException');
         }
 
