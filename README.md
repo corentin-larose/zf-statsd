@@ -61,9 +61,9 @@ If you no longer need this module, rather consider removing the module from the 
 Example:
 
 ```php
-'zf-http-cache' => array(
+'zf-statsd' => array(
     /* ... */
-    'enable' => true, // Cache module is enabled.
+    'enable' => true, // Statsd module is enabled.
     /* ... */
 ),    
 ```
