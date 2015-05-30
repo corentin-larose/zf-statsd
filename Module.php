@@ -1,4 +1,5 @@
 <?php
+
 namespace ZF\Statsd;
 
 class Module
@@ -18,8 +19,8 @@ class Module
     public function onBootstrap(\Zend\Mvc\MvcEvent $e)
     {
         $app = $e->getApplication();
-        $em  = $app->getEventManager();
-        $sm  = $app->getServiceManager();
+        $em = $app->getEventManager();
+        $sm = $app->getServiceManager();
 
         $em->attachAggregate($sm->get('ZF\Statsd\StatsdListener'));
     }

@@ -1,4 +1,5 @@
 <?php
+
 namespace ZFTest\Statsd;
 
 class AbstractTestCase extends \PHPUnit_Framework_TestCase

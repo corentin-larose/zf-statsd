@@ -1,4 +1,5 @@
 <?php
+
 namespace ZF\Statsd;
 
 use Zend\ServiceManager\FactoryInterface;
@@ -7,7 +8,8 @@ use Zend\ServiceManager\ServiceLocatorInterface;
 class StatsdListenerFactory implements FactoryInterface
 {
     /**
-     * @param  ServiceLocatorInterface $services
+     * @param ServiceLocatorInterface $services
+     *
      * @return StatsdListener
      */
     public function createService(ServiceLocatorInterface $serviceLocator)

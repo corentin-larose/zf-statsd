@@ -1,4 +1,5 @@
 <?php
+
 namespace ZF\Statsd;
 
 use Zend\EventManager\EventInterface;
@@ -31,8 +32,14 @@ class StatsdListener extends AbstractListenerAggregate
     protected $metrics = array();
 
     /**
-     * @param  string $metricName
-     * @param  string $value
+     * @var float
+     */
+    protected $requestTime;
+
+    /**
+     * @param string $metricName
+     * @param string $value
+     *
      * @return self
      */
     protected function addMemory($metricName, $value = null)
@@ -53,7 +60,8 @@ class StatsdListener extends AbstractListenerAggregate
     }
 
     /**
-     * @param  string $metricName
+     * @param string $metricName
+     *
      * @return self
      */
     protected function addTimer($metricName, $time)
@@ -71,33 +79,38 @@ class StatsdListener extends AbstractListenerAggregate
      */
     public function attach(EventManagerInterface $events, $priority = 1)
     {
-        $this->listeners[] = $events->attach('*', array($this, 'onEventStart'), 10000);
-        $this->listeners[] = $events->attach('*', array($this, 'onEventEnd'), -10000);
+        $sem = $events->getSharedManager();
+        $this->listeners[] = $sem->attach('*', '*', array($this, 'onEventStart'), 10000);
+        $this->listeners[] = $sem->attach('*', '*', array($this, 'onEventEnd'), -10000);
         $this->listeners[] = $events->attach(MvcEvent::EVENT_FINISH, array($this, 'onFinish'), -11000);
     }
 
     /**
      * @throws \LogicException
-     * @return integer
+     *
+     * @return int
      */
     protected function getRequestTime()
     {
-        if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
-            $start = $_SERVER["REQUEST_TIME_FLOAT"]; // As of PHP 5.4.0
-        } else {
-            if (! defined('REQUEST_TIME_FLOAT')) {
-                throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
+        if (!$this->requestTime) {
+            if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
+                $this->requestTime = $_SERVER['REQUEST_TIME_FLOAT']; // As of PHP 5.4.0
+            } else {
+                if (!defined('REQUEST_TIME_FLOAT')) {
+                    throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
+                }
+                $this->requestTime = REQUEST_TIME_FLOAT;
             }
-            $start = REQUEST_TIME_FLOAT;
         }
 
-        return $start;
+        return $this->requestTime;
     }
 
     /**
-     * @param  integer $end
-     * @param  integer $start
-     * @return integer
+     * @param int $end
+     * @param int $start
+     *
+     * @return int
      */
     protected function getTimeDiff($end, $start = null)
     {
@@ -136,12 +149,12 @@ class StatsdListener extends AbstractListenerAggregate
 
         /* @var $request HttpRequest */
         $request = $e->getRequest();
-        if (! $request instanceof HttpRequest) {
+        if (!$request instanceof HttpRequest) {
             return;
         }
 
         $response = $e->getResponse();
-        if (! $response instanceof HttpResponse) {
+        if (!$response instanceof HttpResponse) {
             return;
         }
 
@@ -157,11 +170,14 @@ class StatsdListener extends AbstractListenerAggregate
         $this->resetMetrics();
 
         foreach ($this->events as $event => $data) {
-            if (isset($data['duration']) and isset($data['memory'])) {
-                list($event) = $this->prepareTokens(array($event));
+            list($event) = $this->prepareTokens(array($event));
 
+            if (isset($data['duration']) and isset($data['memory'])) {
                 $this->addMemory(str_replace('%mvc-event%', $event, $memoryMetric), $data['memory']);
                 $this->addTimer(str_replace('%mvc-event%', $event, $timerMetric), $data['duration']);
+            } elseif (isset($data['start'])) { // Stopped propagation
+                $this->addMemory(str_replace('%mvc-event%', $event, $memoryMetric), 0);
+                $this->addTimer(str_replace('%mvc-event%', $event, $timerMetric), 0);
             }
         }
 
@@ -179,7 +195,7 @@ class StatsdListener extends AbstractListenerAggregate
         $response = $e->getResponse();
 
         $memoryConfig = $this->config['memory_pattern'];
-        $timerConfig  = $this->config['timer_pattern'];
+        $timerConfig = $this->config['timer_pattern'];
 
         $tokens = array();
 
@@ -229,19 +245,20 @@ class StatsdListener extends AbstractListenerAggregate
 
         foreach ($tokens as $k => $v) {
             $memoryConfig = str_replace("%$k%", $v, $memoryConfig);
-            $timerConfig  = str_replace("%$k%", $v, $timerConfig);
+            $timerConfig = str_replace("%$k%", $v, $timerConfig);
         }
 
         return array($memoryConfig, $timerConfig);
     }
 
     /**
-     * @param  array $tokens
+     * @param array $tokens
+     *
      * @return array
      */
     protected function prepareTokens(array $tokens)
     {
-        $regex =  empty($this->config['replace_dots_in_tokens'])
+        $regex = empty($this->config['replace_dots_in_tokens'])
             ? '/[^a-z0-9.]+/ui'
             : '/[^a-z0-9]+/ui';
 
@@ -279,17 +296,17 @@ class StatsdListener extends AbstractListenerAggregate
     }
 
     /**
-     * Sends the metrics over UDP
+     * Sends the metrics over UDP.
      *
      * @return self
      */
     protected function send()
     {
         try {
-            if (! empty($this->metrics)) {
-                $fp = fsockopen("udp://{$this->config['statsd']['host']}", $this->config['statsd']['port']);
+            if (!empty($this->metrics)) {
+                $fp = fsockopen("{$this->config['statsd']['protocol']}{$this->config['statsd']['host']}", $this->config['statsd']['port']);
 
-                if (! $fp) {
+                if (!$fp) {
                     return;
                 }
 
@@ -311,7 +328,8 @@ class StatsdListener extends AbstractListenerAggregate
     /**
      * Sets config.
      *
-     * @param  array $config
+     * @param array $config
+     *
      * @return self
      */
     public function setConfig(array $config)
@@ -322,9 +340,10 @@ class StatsdListener extends AbstractListenerAggregate
     }
 
     /**
-     * @param  string $eventName
-     * @param  string $offset
-     * @param  mixed  $value
+     * @param string $eventName
+     * @param string $offset
+     * @param mixed  $value
+     *
      * @return self
      */
     protected function setEvents($eventName, $offset, $value)
