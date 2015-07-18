@@ -6,9 +6,9 @@ class Module
 {
     public function getAutoloaderConfig()
     {
-        return array('Zend\Loader\StandardAutoloader' => array('namespaces' => array(
+        return [\Zend\Loader\StandardAutoloader::class => ['namespaces' => [
             __NAMESPACE__ => __DIR__.'/src/',
-        )));
+        ]]];
     }
 
     public function getConfig()
@@ -22,6 +22,6 @@ class Module
         $em = $app->getEventManager();
         $sm = $app->getServiceManager();
 
-        $em->attachAggregate($sm->get('ZF\Statsd\StatsdListener'));
+        $em->attachAggregate($sm->get(\ZF\Statsd\StatsdListener::class));
     }
 }

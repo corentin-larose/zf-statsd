@@ -19,10 +19,10 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function addMemoryDataProvider()
     {
-        return array(
-            array('metric_name'),
-            array('metric_name', 5),
-        );
+        return [
+            ['metric_name'],
+            ['metric_name', 5],
+        ];
     }
 
     /**
@@ -32,10 +32,10 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function addTimerDataProvider()
     {
-        return array(
-            array('metric_name', 100),
-            array('metric_name', 5),
-        );
+        return [
+            ['metric_name', 100],
+            ['metric_name', 5],
+        ];
     }
 
     /**
@@ -45,10 +45,10 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function getTimeDiffDataProvider()
     {
-        return array(
-            array(microtime(true), microtime(true) - 1),
-            array(microtime(true)),
-        );
+        return [
+            [microtime(true), microtime(true) - 1],
+            [microtime(true)],
+        ];
     }
 
     /**
@@ -58,14 +58,14 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function methodsReturnSelfDataProvider()
     {
-        return array(
-            array('addMemory', array(''), true),
-            array('addTimer', array('', 1000), true),
-            array('resetEvents', array(), true),
-            array('resetMetrics', array(), true),
-            array('send', array(), true),
-            array('setConfig', array(array()), true),
-        );
+        return [
+            ['addMemory', [''], true],
+            ['addTimer', ['', 1000], true],
+            ['resetEvents', [], true],
+            ['resetMetrics', [], true],
+            ['send', [], true],
+            ['setConfig', [[]], true],
+        ];
     }
 
     /**
@@ -81,91 +81,91 @@ class StatsdListenerTest extends AbstractTestCase
         $response = new \Zend\Http\Response();
         $response->setStatusCode(201)
             ->getHeaders()
-            ->addHeaders(array('Content-type' => 'application/hal+json'));
+            ->addHeaders(['Content-type' => 'application/hal+json']);
 
         $event = new MvcEvent(MvcEvent::EVENT_FINISH);
         $event->setRequest($request)
             ->setResponse($response)
-            ->setRouteMatch(new \Zend\Mvc\Router\RouteMatch(array(
+            ->setRouteMatch(new \Zend\Mvc\Router\RouteMatch([
                 'controller' => 'controller-with.dot.And-dashes',
-            )));
+            ]));
 
         $hostname = preg_replace('/[^a-z0-9.]+/ui', '-', strtolower(gethostname()));
 
-        return array(
-            array(
-                array(
+        return [
+            [
+                [
                     'memory_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.route.memory',
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
                     'timer_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.route.duration',
-                ),
+                ],
                 $event,
                 "$hostname.controller-with-dot-and-dashes.post.201.application-hal-json.route.memory",
                 "$hostname.controller-with-dot-and-dashes.post.201.application-hal-json.route.duration",
-            ),
-            array(
-                array(
+            ],
+            [
+                [
                     'memory_pattern' => '%controller%.%http-method%.%http-code%.%response-content-type%.route.memory',
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
                     'timer_pattern' => '%controller%.%http-method%.%http-code%.%response-content-type%.route.duration',
-                ),
+                ],
                 $event,
                 'controller-with-dot-and-dashes.post.201.application-hal-json.route.memory',
                 'controller-with-dot-and-dashes.post.201.application-hal-json.route.duration',
-            ),
-            array(
-                array(
+            ],
+            [
+                [
                     'memory_pattern' => '%hostname%.%http-method%.%http-code%.%response-content-type%.route.memory',
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
                     'timer_pattern' => '%hostname%.%http-method%.%http-code%.%response-content-type%.route.duration',
-                ),
+                ],
                 $event,
                 "$hostname.post.201.application-hal-json.route.memory",
                 "$hostname.post.201.application-hal-json.route.duration",
-            ),
-            array(
-                array(
+            ],
+            [
+                [
                     'memory_pattern' => '%hostname%.%controller%.%http-code%.%response-content-type%.route.memory',
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
                     'timer_pattern' => '%hostname%.%controller%.%http-code%.%response-content-type%.route.duration',
-                ),
+                ],
                 $event,
                 "$hostname.controller-with-dot-and-dashes.201.application-hal-json.route.memory",
                 "$hostname.controller-with-dot-and-dashes.201.application-hal-json.route.duration",
-            ),
-            array(
-                array(
+            ],
+            [
+                [
                     'memory_pattern' => '%hostname%.%controller%.%http-method%.%response-content-type%.route.memory',
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
                     'timer_pattern' => '%hostname%.%controller%.%http-method%.%response-content-type%.route.duration',
-                ),
+                ],
                 $event,
                 "$hostname.controller-with-dot-and-dashes.post.application-hal-json.route.memory",
                 "$hostname.controller-with-dot-and-dashes.post.application-hal-json.route.duration",
-            ),
-            array(
-                array(
+            ],
+            [
+                [
                     'memory_pattern' => '%controller%.%http-method%.%http-code%.ROUTE.memory',
                     'metric_tokens_callback' => 'strtoupper',
                     'replace_dots_in_tokens' => false,
                     'replace_special_chars_with' => '-',
                     'timer_pattern' => '%controller%.%http-method%.%http-code%.ROUTE.duration',
-                ),
+                ],
                 $event,
                 'CONTROLLER-WITH.DOT.AND-DASHES.POST.201.ROUTE.memory',
                 'CONTROLLER-WITH.DOT.AND-DASHES.POST.201.ROUTE.duration',
-            ),
-        );
+            ],
+        ];
     }
 
     /**
@@ -175,26 +175,26 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function prepareTokensDataProvider()
     {
-        return array(
-            array(
-                array(
+        return [
+            [
+                [
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
-                ),
-                array('controller.with-dot-and-DASHES'),
-                array('controller-with-dot-and-dashes'),
-            ),
-            array(
-                array(
+                ],
+                ['controller.with-dot-and-DASHES'],
+                ['controller-with-dot-and-dashes'],
+            ],
+            [
+                [
                     'metric_tokens_callback' => 'strtoupper',
                     'replace_dots_in_tokens' => false,
                     'replace_special_chars_with' => '-',
-                ),
-                array('controller.with-dot-and-DASHES'),
-                array('CONTROLLER.WITH-DOT-AND-DASHES'),
-            ),
-        );
+                ],
+                ['controller.with-dot-and-DASHES'],
+                ['CONTROLLER.WITH-DOT-AND-DASHES'],
+            ],
+        ];
     }
 
     public function setUp()
@@ -242,19 +242,6 @@ class StatsdListenerTest extends AbstractTestCase
     }
 
     /**
-     * @covers \ZF\Statsd\StatsdListener::getRequestTime()
-     */
-    public function testGetRequestTime()
-    {
-        if (version_compare(PHP_VERSION, '5.4.0') < 0) {
-            $this->setExpectedException('\LogicException');
-        }
-
-        $requestTime = $this->getMethod('getRequestTime')->invoke($this->instance);
-        $this->assertInternalType('float', $requestTime);
-    }
-
-    /**
      * @covers \ZF\Statsd\StatsdListener::getTimeDiff()
      * @dataProvider getTimeDiffDataProvider
      *
@@ -284,10 +271,10 @@ class StatsdListenerTest extends AbstractTestCase
         if ($protected) {
             $ret = $this->getMethod($method)->invokeArgs($this->instance, $args);
         } else {
-            $ret = call_user_func_array(array($this->instance, $method), $args);
+            $ret = call_user_func_array([$this->instance, $method], $args);
         }
 
-        $this->assertInstanceOf('\ZF\Statsd\StatsdListener', $ret);
+        $this->assertInstanceOf(\ZF\Statsd\StatsdListener::class, $ret);
     }
 
     /**
@@ -405,7 +392,7 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function testResetMetrics()
     {
-        $this->setProperty('metrics', array('foo' => 'bar'));
+        $this->setProperty('metrics', ['foo' => 'bar']);
         $this->getMethod('resetMetrics')->invoke($this->instance);
         $this->assertEmpty($this->getproperty('metrics'));
     }
@@ -416,18 +403,18 @@ class StatsdListenerTest extends AbstractTestCase
     public function testSend()
     {
         $this->markTestSkipped();
-        $config = array(
-            'statsd' => array(
+        $config = [
+            'statsd' => [
                 'host' => '127.0.0.1',
                 'port' => '1234',
-            ),
-        );
+            ],
+        ];
         $this->instance->setConfig($config);
 
-        $metrics = array(
+        $metrics = [
             'metric_name1' => 'metric_payload1',
             'metric_name2' => 'metric_payload2',
-        );
+        ];
         $this->setProperty('metrics', $metrics);
 
         // Creates a UDP socket
@@ -469,7 +456,7 @@ class StatsdListenerTest extends AbstractTestCase
      */
     public function testSetConfig()
     {
-        $config = array('foo' => 'bar');
+        $config = ['foo' => 'bar'];
         $this->instance->setConfig($config);
         $this->assertSame($config, $this->getProperty('config'));
     }
@@ -480,6 +467,6 @@ class StatsdListenerTest extends AbstractTestCase
     public function testSetEvents()
     {
         $this->getMethod('setEvents')->invoke($this->instance, MvcEvent::EVENT_FINISH, 'start', 1234);
-        $this->assertSame(array(MvcEvent::EVENT_FINISH => array('start' => 1234)), $this->getProperty('events'));
+        $this->assertSame([MvcEvent::EVENT_FINISH => ['start' => 1234]], $this->getProperty('events'));
     }
 }

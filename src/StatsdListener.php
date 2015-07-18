@@ -14,27 +14,22 @@ class StatsdListener extends AbstractListenerAggregate
     /**
      * @var array
      */
-    protected $config = array();
+    protected $config = [];
 
     /**
      * @var array
      */
-    protected $eventConfig = array();
+    protected $eventConfig = [];
 
     /**
      * @var array
      */
-    protected $events = array();
+    protected $events = [];
 
     /**
      * @var array
      */
-    protected $metrics = array();
-
-    /**
-     * @var float
-     */
-    protected $requestTime;
+    protected $metrics = [];
 
     /**
      * @param string $metricName
@@ -80,30 +75,9 @@ class StatsdListener extends AbstractListenerAggregate
     public function attach(EventManagerInterface $events, $priority = 1)
     {
         $sem = $events->getSharedManager();
-        $this->listeners[] = $sem->attach('*', '*', array($this, 'onEventStart'), 10000);
-        $this->listeners[] = $sem->attach('*', '*', array($this, 'onEventEnd'), -10000);
-        $this->listeners[] = $events->attach(MvcEvent::EVENT_FINISH, array($this, 'onFinish'), -11000);
-    }
-
-    /**
-     * @throws \LogicException
-     *
-     * @return int
-     */
-    protected function getRequestTime()
-    {
-        if (!$this->requestTime) {
-            if (version_compare(PHP_VERSION, '5.4.0') >= 0) {
-                $this->requestTime = $_SERVER['REQUEST_TIME_FLOAT']; // As of PHP 5.4.0
-            } else {
-                if (!defined('REQUEST_TIME_FLOAT')) {
-                    throw new \LogicException("For a PHP version lower than 5.4.0 you MUST call define('REQUEST_TIME_FLOAT', microtime(true)) very early in your boostrap/index.php script in order to use a StatsD timer");
-                }
-                $this->requestTime = REQUEST_TIME_FLOAT;
-            }
-        }
-
-        return $this->requestTime;
+        $this->listeners[] = $sem->attach('*', '*', [$this, 'onEventStart'], 10000);
+        $this->listeners[] = $sem->attach('*', '*', [$this, 'onEventEnd'], -10000);
+        $this->listeners[] = $events->attach(MvcEvent::EVENT_FINISH, [$this, 'onFinish'], -11000);
     }
 
     /**
@@ -114,7 +88,7 @@ class StatsdListener extends AbstractListenerAggregate
      */
     protected function getTimeDiff($end, $start = null)
     {
-        $start or $start = $this->getRequestTime();
+        $start or $start = $_SERVER['REQUEST_TIME_FLOAT'];
 
         return (microtime(true) - $start);
     }
@@ -133,7 +107,7 @@ class StatsdListener extends AbstractListenerAggregate
     {
         // First event just follows boostrap.
         if (empty($this->events[MvcEvent::EVENT_BOOTSTRAP])) {
-            $diff = microtime(true) - $this->getRequestTime();
+            $diff = microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'];
             $this->setEvents(MvcEvent::EVENT_BOOTSTRAP, 'duration', $diff)
                 ->setEvents(MvcEvent::EVENT_BOOTSTRAP, 'memory', memory_get_peak_usage());
         }
@@ -158,7 +132,7 @@ class StatsdListener extends AbstractListenerAggregate
             return;
         }
 
-        $diff = microtime(true) - $this->getRequestTime();
+        $diff = microtime(true) - $_SERVER['REQUEST_TIME_FLOAT'];
         $this->setEvents('total', 'duration', $diff)
             ->setEvents('total', 'memory', memory_get_peak_usage());
 
@@ -170,7 +144,7 @@ class StatsdListener extends AbstractListenerAggregate
         $this->resetMetrics();
 
         foreach ($this->events as $event => $data) {
-            list($event) = $this->prepareTokens(array($event));
+            list($event) = $this->prepareTokens([$event]);
 
             if (isset($data['duration']) and isset($data['memory'])) {
                 $this->addMemory(str_replace('%mvc-event%', $event, $memoryMetric), $data['memory']);
@@ -197,7 +171,7 @@ class StatsdListener extends AbstractListenerAggregate
         $memoryConfig = $this->config['memory_pattern'];
         $timerConfig = $this->config['timer_pattern'];
 
-        $tokens = array();
+        $tokens = [];
 
         if (
             (false !== strpos($memoryConfig, '%hostname%'))
@@ -248,7 +222,7 @@ class StatsdListener extends AbstractListenerAggregate
             $timerConfig = str_replace("%$k%", $v, $timerConfig);
         }
 
-        return array($memoryConfig, $timerConfig);
+        return [$memoryConfig, $timerConfig];
     }
 
     /**
@@ -280,7 +254,7 @@ class StatsdListener extends AbstractListenerAggregate
      */
     protected function resetEvents()
     {
-        $this->events = array();
+        $this->events = [];
 
         return $this;
     }
@@ -290,7 +264,7 @@ class StatsdListener extends AbstractListenerAggregate
      */
     protected function resetMetrics()
     {
-        $this->metrics = array();
+        $this->metrics = [];
 
         return $this;
     }

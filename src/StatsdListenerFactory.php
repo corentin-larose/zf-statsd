@@ -14,7 +14,7 @@ class StatsdListenerFactory implements FactoryInterface
      */
     public function createService(ServiceLocatorInterface $serviceLocator)
     {
-        $config = array();
+        $config = [];
         if ($serviceLocator->has('Config')) {
             $config = $serviceLocator->get('Config');
             if (isset($config['zf-statsd'])) {

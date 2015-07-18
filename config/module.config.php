@@ -1,13 +1,13 @@
 <?php
 
-return array(
-    'service_manager' => array(
-        'factories' => array(
-            'ZF\Statsd\StatsdListener' => 'ZF\Statsd\StatsdListenerFactory',
-        ),
-    ),
+return [
+    'service_manager' => [
+        'factories' => [
+            \ZF\Statsd\StatsdListener::class => \ZF\Statsd\StatsdListenerFactory::class,
+        ],
+    ],
 
-    'zf-statsd' => array(
+    'zf-statsd' => [
         /*
          * Whether to enable stats.
          */
@@ -27,10 +27,10 @@ return array(
         /*
          * StatsD daemon configuration.
          */
-        'statsd' => array(
+        'statsd' => [
             'host' => '127.0.0.1',
             'port' => '8125',
             'protocol' => 'udp',
-        ),
-    ),
-);
+        ],
+    ],
+];
