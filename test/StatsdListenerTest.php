@@ -99,10 +99,12 @@ class StatsdListenerTest extends AbstractTestCase
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
+                    'stopped_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.route.stopped',
                     'timer_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.route.duration',
                 ],
                 $event,
                 "$hostname.controller-with-dot-and-dashes.post.201.application-hal-json.route.memory",
+                "$hostname.controller-with-dot-and-dashes.post.201.application-hal-json.route.stopped",
                 "$hostname.controller-with-dot-and-dashes.post.201.application-hal-json.route.duration",
             ],
             [
@@ -111,10 +113,12 @@ class StatsdListenerTest extends AbstractTestCase
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
+                    'stopped_pattern' => '%controller%.%http-method%.%http-code%.%response-content-type%.route.stopped',
                     'timer_pattern' => '%controller%.%http-method%.%http-code%.%response-content-type%.route.duration',
                 ],
                 $event,
                 'controller-with-dot-and-dashes.post.201.application-hal-json.route.memory',
+                'controller-with-dot-and-dashes.post.201.application-hal-json.route.stopped',
                 'controller-with-dot-and-dashes.post.201.application-hal-json.route.duration',
             ],
             [
@@ -123,10 +127,12 @@ class StatsdListenerTest extends AbstractTestCase
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
+                    'stopped_pattern' => '%hostname%.%http-method%.%http-code%.%response-content-type%.route.stopped',
                     'timer_pattern' => '%hostname%.%http-method%.%http-code%.%response-content-type%.route.duration',
                 ],
                 $event,
                 "$hostname.post.201.application-hal-json.route.memory",
+                "$hostname.post.201.application-hal-json.route.stopped",
                 "$hostname.post.201.application-hal-json.route.duration",
             ],
             [
@@ -135,10 +141,12 @@ class StatsdListenerTest extends AbstractTestCase
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
+                    'stopped_pattern' => '%hostname%.%controller%.%http-code%.%response-content-type%.route.stopped',
                     'timer_pattern' => '%hostname%.%controller%.%http-code%.%response-content-type%.route.duration',
                 ],
                 $event,
                 "$hostname.controller-with-dot-and-dashes.201.application-hal-json.route.memory",
+                "$hostname.controller-with-dot-and-dashes.201.application-hal-json.route.stopped",
                 "$hostname.controller-with-dot-and-dashes.201.application-hal-json.route.duration",
             ],
             [
@@ -147,10 +155,12 @@ class StatsdListenerTest extends AbstractTestCase
                     'metric_tokens_callback' => 'strtolower',
                     'replace_dots_in_tokens' => true,
                     'replace_special_chars_with' => '-',
+                    'stopped_pattern' => '%hostname%.%controller%.%http-method%.%response-content-type%.route.stopped',
                     'timer_pattern' => '%hostname%.%controller%.%http-method%.%response-content-type%.route.duration',
                 ],
                 $event,
                 "$hostname.controller-with-dot-and-dashes.post.application-hal-json.route.memory",
+                "$hostname.controller-with-dot-and-dashes.post.application-hal-json.route.stopped",
                 "$hostname.controller-with-dot-and-dashes.post.application-hal-json.route.duration",
             ],
             [
@@ -159,10 +169,12 @@ class StatsdListenerTest extends AbstractTestCase
                     'metric_tokens_callback' => 'strtoupper',
                     'replace_dots_in_tokens' => false,
                     'replace_special_chars_with' => '-',
+                    'stopped_pattern' => '%controller%.%http-method%.%http-code%.ROUTE.stopped',
                     'timer_pattern' => '%controller%.%http-method%.%http-code%.ROUTE.duration',
                 ],
                 $event,
                 'CONTROLLER-WITH.DOT.AND-DASHES.POST.201.ROUTE.memory',
+                'CONTROLLER-WITH.DOT.AND-DASHES.POST.201.ROUTE.stopped',
                 'CONTROLLER-WITH.DOT.AND-DASHES.POST.201.ROUTE.duration',
             ],
         ];
@@ -340,20 +352,23 @@ class StatsdListenerTest extends AbstractTestCase
      * @param string   $memoryConfig
      * @param string   $timerConfig
      * @param string   $exMemoryConfig
+     * @param string   $exStoppedConfig
      * @param string   $exTimerConfig
      */
-    public function testPrepareMetricNames(array $config, MvcEvent $e, $exMemoryConfig, $exTimerConfig)
+    public function testPrepareMetricNames(array $config, MvcEvent $e, $exMemoryConfig, $exStoppedConfig, $exTimerConfig)
     {
         $this->instance
             ->setConfig($config);
 
         list(
             $memoryConfig,
+            $stoppedMetric,
             $timerConfig
         ) = $this->getMethod('prepareMetricNames')
             ->invoke($this->instance, $e);
 
         $this->assertSame($exMemoryConfig, $memoryConfig);
+        $this->assertSame($exStoppedConfig, $stoppedMetric);
         $this->assertSame($exTimerConfig, $timerConfig);
     }
 

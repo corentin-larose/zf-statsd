@@ -16,6 +16,9 @@ return [
         // web-front-01.account.get.200.application-json.application-json-hal.route.memory
         'memory_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.%mvc-event%.memory',
 
+        // web-front-01.account.get.200.application-json.application-json-hal.route.stopped
+        'stopped_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.%mvc-event%.stopped',
+
         // web-front-01.account.get.200.application-json.application-json-hal.route.duration
         'timer_pattern' => '%hostname%.%controller%.%http-method%.%http-code%.%response-content-type%.%mvc-event%.duration',
 

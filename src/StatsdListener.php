@@ -138,6 +138,7 @@ class StatsdListener extends AbstractListenerAggregate
 
         list(
             $memoryMetric,
+            $stoppedMetric,
             $timerMetric
         ) = $this->prepareMetricNames($e);
 
@@ -150,8 +151,7 @@ class StatsdListener extends AbstractListenerAggregate
                 $this->addMemory(str_replace('%mvc-event%', $event, $memoryMetric), $data['memory']);
                 $this->addTimer(str_replace('%mvc-event%', $event, $timerMetric), $data['duration']);
             } elseif (isset($data['start'])) { // Stopped propagation
-                $this->addMemory(str_replace('%mvc-event%', $event, $memoryMetric), 0);
-                $this->addTimer(str_replace('%mvc-event%', $event, $timerMetric), 0);
+                $this->addMemory(str_replace('%mvc-event%', $event, $stoppedMetric), 1);
             }
         }
 
@@ -169,12 +169,14 @@ class StatsdListener extends AbstractListenerAggregate
         $response = $e->getResponse();
 
         $memoryConfig = $this->config['memory_pattern'];
+        $stoppedConfig = $this->config['stopped_pattern'];
         $timerConfig = $this->config['timer_pattern'];
 
         $tokens = [];
 
         if (
             (false !== strpos($memoryConfig, '%hostname%'))
+            or (false !== strpos($stoppedConfig, '%hostname%'))
             or (false !== strpos($timerConfig, '%hostname%'))
         ) {
             $tokens['hostname'] = gethostname();
@@ -182,6 +184,7 @@ class StatsdListener extends AbstractListenerAggregate
 
         if (
             (false !== strpos($memoryConfig, '%controller%'))
+            or (false !== strpos($stoppedConfig, '%controller%'))
             or (false !== strpos($timerConfig, '%controller%'))
         ) {
             $tokens['controller'] = $e->getRouteMatch()
@@ -190,6 +193,7 @@ class StatsdListener extends AbstractListenerAggregate
 
         if (
             (false !== strpos($memoryConfig, '%http-method%'))
+            or (false !== strpos($stoppedConfig, '%http-method%'))
             or (false !== strpos($timerConfig, '%http-method%'))
         ) {
             $tokens['http-method'] = $request->getMethod();
@@ -197,6 +201,7 @@ class StatsdListener extends AbstractListenerAggregate
 
         if (
             (false !== strpos($memoryConfig, '%http-code%'))
+            or (false !== strpos($stoppedConfig, '%http-code%'))
             or (false !== strpos($timerConfig, '%http-code%'))
         ) {
             $tokens['http-code'] = $response->getStatusCode();
@@ -204,6 +209,7 @@ class StatsdListener extends AbstractListenerAggregate
 
         if (
             (false !== strpos($memoryConfig, '%response-content-type%'))
+            or (false !== strpos($stoppedConfig, '%response-content-type%'))
             or (false !== strpos($timerConfig, '%response-content-type%'))
         ) {
             $headers = $response->getHeaders();
@@ -219,10 +225,11 @@ class StatsdListener extends AbstractListenerAggregate
 
         foreach ($tokens as $k => $v) {
             $memoryConfig = str_replace("%$k%", $v, $memoryConfig);
+            $stoppedConfig = str_replace("%$k%", $v, $stoppedConfig);
             $timerConfig = str_replace("%$k%", $v, $timerConfig);
         }
 
-        return [$memoryConfig, $timerConfig];
+        return [$memoryConfig, $stoppedConfig, $timerConfig];
     }
 
     /**
@@ -236,12 +243,12 @@ class StatsdListener extends AbstractListenerAggregate
             ? '/[^a-z0-9.]+/ui'
             : '/[^a-z0-9]+/ui';
 
-        foreach ($tokens as $k => &$token) {
+        foreach ($tokens as &$token) {
             $token = preg_replace($regex, $this->config['replace_special_chars_with'], $token);
         }
 
         if (is_callable($this->config['metric_tokens_callback'])) {
-            foreach ($tokens as $k => &$token) {
+            foreach ($tokens as &$token) {
                 $token = call_user_func($this->config['metric_tokens_callback'], $token);
             }
         }
