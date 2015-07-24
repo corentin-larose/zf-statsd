@@ -192,3 +192,34 @@ ZF2 Events
 #### `ZF\Statsd\StatsdListener`
 
 This listener is attached twice on each `Zend\Mvc\Application` event, once with the very low priority of `-10000` to collect metrics before event propagation, once with the very high priority of `10000` to collect metrics after event propagation.
+
+Display events in console
+----------
+
+Install NodeJs an NPM:
+```
+apt-get install nodejs npm
+```
+
+Clone StatsD
+```
+git clone https://github.com/etsy/statsd.git
+```
+
+Create a config
+```
+cd statsd && cp exampleConfig.js config.js
+```
+
+Edit config.js
+```
+{
+port: 8125
+, backends: [ "./backends/console" ]
+}
+```
+
+Start StatsD
+```
+node stats.js ./config.js
+```
