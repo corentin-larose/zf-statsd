@@ -278,7 +278,7 @@ class StatsdListener extends AbstractListenerAggregate
     {
         try {
             if (!empty($this->metrics)) {
-                $fp = fsockopen("{$this->config['statsd']['protocol']}{$this->config['statsd']['host']}", $this->config['statsd']['port']);
+                $fp = fsockopen("{$this->config['statsd']['protocol']}://{$this->config['statsd']['host']}", $this->config['statsd']['port']);
 
                 if (!$fp) {
                     return;
